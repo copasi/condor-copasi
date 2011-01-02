@@ -16,6 +16,9 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     (r'^admin/', include(admin.site.urls)),
     (r'^$', mainPage),
+    (r'login/', loginPage),
+    (r'logout/',logoutPage),
+    (r'restricted',restricted),
 )
 
 if settings.DEBUG:

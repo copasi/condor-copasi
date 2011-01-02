@@ -96,3 +96,12 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
 )
+
+TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
+'django.core.context_processors.auth',
+'django.core.context_processors.debug',
+'django.core.context_processors.i18n',
+)
+
+LOGIN_URL = '/login/'
+LOGOUT_URL = '/logout/'
