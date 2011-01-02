@@ -101,13 +101,21 @@ table.formtable th {
     font-weight: bold;
     background: white;
     margin: 0 10px 10px 10px;
-    padding: 0px 10px 0 10px;
+    padding: 0px 10px 10px 10px;
 }
 
 #sidebar a:link, #sidebar a:visited{
     color: black;
 }
-
+#sidebar ul{
+    margin-left: 0px;
+    padding-left: 20px;
+    list-style-type: square;
+}
+#sidebar li{
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
 #content {
     margin: 10px 10px 10px 150px;
     padding: 10px;

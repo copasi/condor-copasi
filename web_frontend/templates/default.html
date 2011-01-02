@@ -32,13 +32,15 @@ Condor-Coasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
         <div id="main">
             <div id="sidebar">
             {% block sidebar %}
-                <p><a href="http://{{request.get_host}}/">Home</a></p>
-                {% if user.is_authenticated %}
-                <p>My Account</p>
-                <p>Tasks</p>
-                <p><a href="http://{{request.get_host}}/logout/">Logout</a></p>
-                {%endif%}
-                <p>Help</p>
+                <ul>
+                    <li><a href="http://{{request.get_host}}/">Home</a></li>
+                    {% if user.is_authenticated %}
+                    <li>My Account</li>
+                    <li>Tasks</li>
+                    <li><a href="http://{{request.get_host}}/logout/">Logout</a></li>
+                    {%endif%}
+                    <li>Help</li>
+                </ul>
             {% endblock %}
             </div>
             <div id="content">    
