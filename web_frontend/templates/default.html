@@ -27,7 +27,7 @@ Condor-Coasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
         </div>
         <div id="breadcrumbs">
             <a href="http://{{request.get_host}}/">Home</a> &gt;&gt;
-            {% block breadcrumbs %}{% endblock %}
+            {% block breadcrumbs_l2 %}{% endblock %}
         </div>
         <div id="main">
             <div id="sidebar">
@@ -36,7 +36,9 @@ Condor-Coasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
                     <li><a href="http://{{request.get_host}}/">Home</a></li>
                     {% if user.is_authenticated %}
                     <li>My Account</li>
-                    <li>Tasks</li>
+                    {% block accountlist %}{% endblock %}
+                    <li><a href="http://{{request.get_host}}/tasks">Tasks</a></li>
+                    {% block tasklist %}{% endblock %}
                     <li><a href="http://{{request.get_host}}/logout/">Logout</a></li>
                     {%endif%}
                     <li>Help</li>

@@ -95,6 +95,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
+    'condor_copasi_db',
 )
 
 TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
@@ -105,3 +106,4 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
+USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')

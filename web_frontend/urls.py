@@ -1,9 +1,9 @@
 from django.conf.urls.defaults import *
 from web_frontend.views import *
+from web_frontend.condor_copasi_db import views as db
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 from django.conf import settings
-
 admin.autodiscover()
 
 urlpatterns = patterns('',
@@ -16,9 +16,10 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     (r'^admin/', include(admin.site.urls)),
     (r'^$', mainPage),
-    (r'login/', loginPage),
-    (r'logout/',logoutPage),
-    (r'restricted',restricted),
+    (r'login/$', loginPage),
+    (r'logout/$',logoutPage),
+    (r'tasks/$', db.tasks),
+    (r'tasks/new/sensitivityOptimization/$', db.sensitivityOptimization),
 )
 
 if settings.DEBUG:

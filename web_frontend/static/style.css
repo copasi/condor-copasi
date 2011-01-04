@@ -116,6 +116,10 @@ table.formtable th {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
 }
+#sidebar ul > ul {
+    font-weight: normal;
+    font-size: 12px
+}
 #content {
     margin: 10px 10px 10px 150px;
     padding: 10px;
