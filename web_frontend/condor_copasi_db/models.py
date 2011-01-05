@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from web_frontend import settings
+import os
 
 class Job(models.Model):
     JOB_TYPE_CHOICES = (('SO', 'Sensitivity Optimization'),)
@@ -32,6 +34,9 @@ class Job(models.Model):
     
     def __unicode__(self):
         return u'%s: %s' % (self.job_type, self.name)
+        
+    def get_filename(self):
+        return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id), self.model_name)
         
 class CondorJob(models.Model):
     #The parent job

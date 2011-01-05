@@ -51,8 +51,9 @@ ul.errorlist, div.error {
 div.review {
     background: #fcffbf;
     padding: 5px;
-    margin: 0.5em;
+    margin: 1em auto 1em auto;
     border: 1px solid gray;
+    max-width: 80%;
 }
 div.review th{
     font-weight: bold;

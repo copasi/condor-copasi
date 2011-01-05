@@ -96,6 +96,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
     'condor_copasi_db',
+    'copasi'
 )
 
 TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
@@ -107,3 +108,6 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
 USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
+
+COPASI_BINARY_DIR = '/home/ed/bin/condor_files/'
+COPASI_LOCAL_BINARY = os.path.join(COPASI_BINARY_DIR, 'CopasiSE.LINUX.X86_64')

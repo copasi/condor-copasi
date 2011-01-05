@@ -10,6 +10,7 @@ import web_frontend.condor_copasi_db.views
 from web_frontend import settings
 from web_frontend.condor_copasi_db import models
 from web_frontend import views as web_frontend_views
+from web_frontend.copasi.model import CopasiModel
 
 #Generic function for saving a django UploadedFile to a destination
 def handle_uploaded_file(f,destination):
@@ -116,13 +117,16 @@ def sensitivityOptimizationConfirm(request, job_id):
     #TODO:exception handle here.
     except:
         pass
-        
+    
+    job_filename = job.get_filename()
+    
+    model = CopasiModel(job_filename)    
     job_details = (
         ('Job Name', 'Test'),
         ('File Name', 'filename test'),
         ('Optimization algorithm', 'Particle Swarm')
     )
-    parameters = (
-        ('p1', 'min', 'max', 'start'),
-    )
+    parameters = []
+    for parameter in model.get_optimization_names(strip=True):
+        parameters.append((parameter, 'minv', 'maxv', 'startv'))
     return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
