@@ -1,0 +1,13 @@
+{% extends "default.html" %}
+
+{%block body%}
+<p>Apologies, but an internal error has occured. </p>
+<div class="error">
+<ul>
+{% for error in errors %}
+<li>{{error}}</li>
+{% endfor %}
+</ul>
+</div>
+<p><a href="http://{{request.get_host}}">Click here</a> to return home</p>
+{% endblock %}

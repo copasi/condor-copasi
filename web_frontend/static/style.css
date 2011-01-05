@@ -10,9 +10,22 @@ body {
     overflow:auto;
 }
 
-a:link, a:visited {
+form {
+    background: #ded3ff;
+    margin: 0.5em;
+    padding: 0.5em;
+    border: 1px solid gray;
+}
+
+#header a:link, #header a:visited {
     color: white;
     text-decoration: none;
+}
+
+#content a:link, #content a:visited {
+    color: #353535;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 #breadcrumbs a:link, #breadcrumbs a:visited {
@@ -30,18 +43,43 @@ h1 {
 
 ul.errorlist, div.error {
     background: #f9dcdc;
+    padding: 0.2em;
+    margin: 0.2em;
+    border: 1px solid gray;
 }
 
+div.review {
+    background: #fcffbf;
+    padding: 5px;
+    margin: 0.5em;
+    border: 1px solid gray;
+}
+div.review th{
+    font-weight: bold;
+}
+div.review th, div.review td{
+    font-size: 12px;
+    border-collapse: collapse;
+    text-align: left;
+    padding: 0.3em;
+}
+div.message{
+    background: #f1ecff;
+    font-weight: bold;
+    padding: 0.5em;
+    border: 1px solid gray;
+}
 table.formtable{
     border-collapse: collapse;
     margin: 0px;
 }
 
-table.formtable th, td{
+table.formtable th, table.formtable td{
     margin: 0px;
     border: 1px dotted gray;
     border-left: 0;
     border-right: 0;
+    padding: 5px;
 }  
 
 table.formtable th {
@@ -106,6 +144,7 @@ table.formtable th {
 
 #sidebar a:link, #sidebar a:visited{
     color: black;
+    text-decoration: none;
 }
 #sidebar ul{
     margin-left: 0px;
@@ -125,6 +164,8 @@ table.formtable th {
     padding: 10px;
     border: 1px solid gray;
     background: white;
+    max-width: 70%;
+
 }
 
 #main{

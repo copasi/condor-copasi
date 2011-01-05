@@ -52,3 +52,6 @@ def logoutPage(request):
 def restricted(request):
     return HttpResponseRedirect('/')
     
+def handle_error(request, pageTitle, errors):
+    return render_to_response('500.html', locals(), context_instance=RequestContext(request))
+    

@@ -3,7 +3,7 @@
 <html>
 <head>
 <title>
-Condor-Coasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
+Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
 <link rel="stylesheet" type="text/css" href="http://{{ request.get_host }}/static/style.css" /> 
 
@@ -46,6 +46,11 @@ Condor-Coasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
             {% endblock %}
             </div>
             <div id="content">    
+                {% if message %}
+                    <div class="message">
+                    {{message}}
+                    </div>
+                {% endif %}
                 <h1>{{ pageTitle }}</h1>
                 {% block body %}
                 Body text

@@ -12,7 +12,13 @@
     </ul>
 </p>
 
-<form action="" method="post">
+{% if file_error %}
+<div class="error">
+There was a problem with the file you submitted. Please ensure the guidelines above have been followed.
+<ul><li>{{file_error}}</li></ul></div>
+{% endif %}
+
+<form action="" method="post" enctype="multipart/form-data">
 {% csrf_token %}
 <table class="formtable">
 {{ form.as_table }}

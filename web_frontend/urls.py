@@ -1,6 +1,7 @@
 from django.conf.urls.defaults import *
 from web_frontend.views import *
 from web_frontend.condor_copasi_db import views as db
+from web_frontend.condor_copasi_db.views import tasks as db_tasks
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 from django.conf import settings
@@ -18,8 +19,9 @@ urlpatterns = patterns('',
     (r'^$', mainPage),
     (r'login/$', loginPage),
     (r'logout/$',logoutPage),
-    (r'tasks/$', db.tasks),
-    (r'tasks/new/sensitivityOptimization/$', db.sensitivityOptimization),
+    (r'tasks/$', db_tasks),
+    (r'tasks/new/sensitivity_optimization/$', db.sensitivityOptimization),
+    (r'tasks/new/sensitivity_optimization/confirm/(?P<job_id>\w+)/$', db.sensitivityOptimizationConfirm),
 )
 
 if settings.DEBUG:

@@ -8,12 +8,13 @@ class Job(models.Model):
     #The user who submitted the job
     user = models.ForeignKey(User)
     #The directory containing the Copasi model and all associated files
-    directory = models.CharField(max_length=255)
+#    directory = models.CharField(max_length=255)
     #The filename of the copasi model
     model_name = models.CharField(max_length=255)
     #The filename of the results file/directory (needed?)
-    results = models.CharField(max_length=255)
+    #results = models.CharField(max_length=255, null=True)
     STATUS_CHOICES = (
+        ('U', 'Unconfirmed'),
         ('N', 'New'),
         ('S', 'Submitted'),
         ('F', 'Finished'),
@@ -26,8 +27,11 @@ class Job(models.Model):
     #The time the job was submitted
     submission_time = models.DateField()
     
+    class Meta:
+        unique_together = ('user', 'name')
+    
     def __unicode__(self):
-        return u'%s: %s' % (self.job_type[1], self.name)
+        return u'%s: %s' % (self.job_type, self.name)
         
 class CondorJob(models.Model):
     #The parent job
