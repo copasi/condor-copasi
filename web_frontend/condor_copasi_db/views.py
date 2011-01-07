@@ -58,23 +58,29 @@ def sensitivityOptimization(request):
             #file can be accessed by request.FILES['file']
             model_file = request.FILES['model_file']
             #Confirm model is valid by running a number of tests on it, e.g. valid xml, correct tasks set up properly etc.
-            if False: #TODO: change to if not model_validate()...
-                file_error = 'Some error'
-            else:
-                #Otherwise add a new job as unconfirmed
-                job = models.Job(job_type='SO', user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today())
-                job.save()
-                #And then create a new directory in the settings.USER_FILES dir
-                user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))
-                if not os.path.exists(user_dir):
-                    os.mkdir(user_dir)
-                #Make a new unique directory for the file
-                job_dir = os.path.join(user_dir, str(job.id))
-                os.mkdir(job_dir)
-                #And set the new model filename as follows:
-                destination=os.path.join(job_dir, model_file.name)
-                handle_uploaded_file(model_file, destination)
-                return HttpResponseRedirect('/tasks/new/sensitivity_optimization/confirm/' + str(job.id))
+            try:
+                temp_file_path = model_file.temporary_file_path()
+                m = CopasiModel(temp_file_path)
+                if m.is_valid('SO') != True:
+                    file_error = m.is_valid('SO')
+                else:
+                    #Otherwise add a new job as unconfirmed
+                    job = models.Job(job_type='SO', user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today())
+                    job.save()
+                    #And then create a new directory in the settings.USER_FILES dir
+                    user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))
+                    if not os.path.exists(user_dir):
+                        os.mkdir(user_dir)
+                    #Make a new unique directory for the file
+                    job_dir = os.path.join(user_dir, str(job.id))
+                    os.mkdir(job_dir)
+                    #And set the new model filename as follows:
+                    destination=os.path.join(job_dir, model_file.name)
+                    handle_uploaded_file(model_file, destination)
+                    return HttpResponseRedirect('/tasks/new/sensitivity_optimization/confirm/' + str(job.id))
+            except:
+                    file_error = 'The submitted file is not a valid Copasi xml file'
+                    raise
     else:
         form = UploadModelForm()
         file_error = False
@@ -96,18 +102,20 @@ def sensitivityOptimizationConfirm(request, job_id):
     if request.method == 'POST':
         #Check if the request was confirmed or cancelled
         if 'confirm_job' in request.POST:
+            #Prepare the temporary files for the senstivity optimization task
+            model = CopasiModel(job.get_filename())
+            model.prepare_sensitvity_optimizations()
+
             #Mark the job as confirmed
             job.status = 'N'
             job.save()
+
             #Store a message stating that the job was successfully confirmed
             request.session['message'] = 'Job succesfully sumbitted.'
+
             return HttpResponseRedirect('/tasks/')
+        
         elif 'cancel_job' in request.POST:
-            #get the user_dir
-            user_dir = os.path.join(settings.USER_FILES_DIR, request.user.username)
-            job_dir = os.path.join(user_dir, str(job.id))
-            #remove the job id folder
-            shutil.rmtree(job_dir)
             job.delete()
             return HttpResponseRedirect('/tasks/')
             
@@ -122,11 +130,13 @@ def sensitivityOptimizationConfirm(request, job_id):
     
     model = CopasiModel(job_filename)    
     job_details = (
-        ('Job Name', 'Test'),
-        ('File Name', 'filename test'),
-        ('Optimization algorithm', 'Particle Swarm')
+        ('Job Name', job.name),
+        ('File Name', job.model_name),
+        ('Model Name', model.get_name()),
+        ('Optimization algorithm', model.get_optimization_method()),
+        ('Sensitivities Object', model.get_sensitivities_object()),
+        
     )
-    parameters = []
-    for parameter in model.get_optimization_names(strip=True):
-        parameters.append((parameter, 'minv', 'maxv', 'startv'))
+    parameters =  model.get_optimization_parameters(friendly=True)
+
     return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))

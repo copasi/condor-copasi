@@ -44,7 +44,7 @@ h1 {
 ul.errorlist, div.error {
     background: #f9dcdc;
     padding: 0.2em;
-    margin: 0.2em;
+    margin: 0.5em;
     border: 1px solid gray;
 }
 
@@ -55,14 +55,18 @@ div.review {
     border: 1px solid gray;
     max-width: 80%;
 }
+
+div.review table{
+    border-collapse: collapse;
+}
 div.review th{
     font-weight: bold;
 }
 div.review th, div.review td{
     font-size: 12px;
-    border-collapse: collapse;
     text-align: left;
     padding: 0.3em;
+    border: 1px dotted gray;
 }
 div.message{
     background: #f1ecff;

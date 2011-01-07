@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from web_frontend import settings
-import os
+import os, shutil
 
 class Job(models.Model):
     JOB_TYPE_CHOICES = (('SO', 'Sensitivity Optimization'),)
@@ -19,7 +19,8 @@ class Job(models.Model):
         ('U', 'Unconfirmed'),
         ('N', 'New'),
         ('S', 'Submitted'),
-        ('F', 'Finished'),
+        ('W', 'Finished, waiting for results'),
+        ('C', 'Complete'),
         ('E', 'Error'),
     )
     #The status of the whole job
@@ -27,30 +28,45 @@ class Job(models.Model):
     #The user-assigned name of the job
     name = models.CharField(max_length=64)
     #The time the job was submitted
-    submission_time = models.DateField()
+    submission_time = models.DateTimeField()
+    #The time the job was marked as finished
+    finish_time=models.DateTimeField(null=True)
+    #The file containing the processed result output
+    #output_file=models.CharField(max_length=255, null=True)
     
     class Meta:
         unique_together = ('user', 'name')
     
     def __unicode__(self):
         return u'%s: %s' % (self.job_type, self.name)
-        
+    
+    def get_path(self):
+        return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id))
     def get_filename(self):
         return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id), self.model_name)
+        
+    def delete(self, *args, **kwargs):
+        """Override the build-in delete. First delete the model directory. Then call super.delete"""
+        shutil.rmtree(self.get_path())
+        super(Job, self).delete(*args, **kwargs)
         
 class CondorJob(models.Model):
     #The parent job
     parent = models.ForeignKey(Job)
     #The .job condor specification file
     spec_file = models.CharField(max_length=255)
-    #The output file for the job
-    output_file = models.CharField(max_length=255)
+    #The std output file for the job
+    std_output_file = models.CharField(max_length=255)
     #The log file for the job
     log_file = models.CharField(max_length=255)
+    #The error file for the job
+    std_error_file = models.CharField(max_length=255)
+    #The output file created by the job
+    job_output = models.CharField(max_length=255)
     #The status of the job in the queue
     QUEUE_CHOICES = (
         ('N', 'Not queued'),
-        ('Q', 'Queuing'),
+        ('Q', 'Queued'),
         ('I', 'Idle'),
         ('R', 'Running'),
         ('H', 'Held'),

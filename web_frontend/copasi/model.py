@@ -1,4 +1,4 @@
-import subprocess, os, tempfile, shutil
+import subprocess, os, re
 from web_frontend import settings
 from lxml import etree
 from string import Template
@@ -12,17 +12,30 @@ class CopasiModel:
         self.binary = binary
         self.binary_dir = binary_dir
         self.name = filename #TODO: change this to represent the actual model name, found in the xml
-        
+        (head, tail) = os.path.split(filename)
+        self.path = head
     def __unicode__(self):
         return self.name
     def __string__(self):
         return self.name
+        
+    def is_valid(self, job_type):
+        if job_type == 'SO':
+            #Check that a single object has been set for the sensitivities task:
+            if self.get_sensitivities_object() == '':
+                return 'A single object has not been set for the sensitivities task'
+            #And check that at least one parameter has been set
+            if len(self.get_optimization_parameters()) == 0:
+                return 'No parameters have been set for the optimization task'
+
+        return True
         
     def __copasiExecute(self, filename, tempdir):
         """Private function to run Copasi locally in a temporary folder."""
         p = subprocess.Popen([self.binary, '--nologo',  '--home', tempdir, filename], stdout=subprocess.PIPE, cwd=tempdir)
         p.communicate()
         
+   
     def __getTask(self,task_type):
         """Get the XML tree representing a task with type: 'type'"""
         #Get the task list
@@ -41,17 +54,117 @@ class CopasiModel:
         except:
             raise
         return foundTask
-       
-    def get_optimization_names(self, strip=False):
-        """Returns a list of the parameter names to be included in the sensitvitiy optimization task"""
-        #Create new custom report for sensitivities task, containing results in footer
-        try:
-            report_key = 'auto_report'
+
+    def __clear_tasks(self):
+        """Go through the task list, and set all tasks as not scheduled to run"""
+        listOfTasks = self.model.find(xmlns + 'ListOfTasks') 
+        assert listOfTasks != None
+        
+        for task in listOfTasks:
+            task.attrib['scheduled'] = 'false'
+    
+    def get_name(self):
+        """Returns the name of the model"""
+        modelTree = self.model.find(xmlns + 'Model')
+        return modelTree.attrib['name']
+
+
+    def get_optimization_method(self):
+        """Returns the algorithm set for the optimization task"""
+        optTask = self.__getTask('optimization')
+        optMethod = optTask.find(xmlns + 'Method')
+        return optMethod.attrib['name']
+
+    def get_sensitivities_object(self, friendly=True):
+        """Returns the single object set for the sensitvities task"""
+        sensTask = self.__getTask('sensitivities')
+        sensProblem = sensTask.find(xmlns + 'Problem')
+        parameterGroup = sensProblem.find(xmlns + 'ParameterGroup')
+        parameter = parameterGroup.find(xmlns + 'Parameter')
+        value_string = parameter.attrib['value']
+        
+        if friendly:
+            #Use a regex to extract the parameter name from string of the format:
+            #Vector=Metabolites[E1]
+            string = r'Vector=(?P<name>(Reactions|Metabolites|Values)\[.+\])'
+            r = re.compile(string)
+            search = r.search(value_string)
+            if search:
+                value_string = search.group('name')
+        return value_string
+            
+    def get_optimization_parameters(self, friendly=True):
+        """Returns a list of the parameter names to be included in the sensitvitiy optimization task. Will optionally process names to make them more user friendly"""
+        #Get the sensitivities task:
+        sensTask=self.__getTask('optimization')
+        sensProblem = sensTask.find(xmlns + 'Problem')
+        optimizationItems = sensProblem.find(xmlns + 'ParameterGroup')
+        parameters = []
+        for subGroup in optimizationItems:
+            name = None
+            lowerBound = None
+            upperBound = None
+            startValue = None
+            
+            for item in subGroup:
+                if item.attrib['name'] == 'ObjectCN':
+                    name = item.attrib['value']
+                elif item.attrib['name'] == 'UpperBound':
+                    upperBound = item.attrib['value']
+                elif item.attrib['name'] == 'LowerBound':
+                    lowerBound = item.attrib['value']
+                elif item.attrib['name'] == 'StartValue':
+                    startValue = item.attrib['value']
+            assert name !=None
+            assert lowerBound != None
+            assert upperBound != None
+            assert startValue != None
+              
+            if friendly:
+                #Construct a user-friendly name for the parameter name using regexs
+                #Look for a match for global parameters: Vector=Values[Test parameter],
+                global_string = r'.*Vector=Values\[(?P<name>.*)\].*'
+                global_string_re = re.compile(global_string)
+                global_match = re.match(global_string_re, name)
+                
+                if global_match:
+                    name = global_match.group('name')
+                
+                #else check for a local match.
+                #Vector=Reactions[Reaction] Parameter=k1
+                local_string = r'.*Vector=Reactions\[(?P<reaction>.*)\].*Parameter=(?P<parameter>.*),Reference=Value.*'
+                local_string_re = re.compile(local_string)
+                local_match = re.match(local_string_re, name)
+                
+                if local_match:
+                    reaction = local_match.group('reaction')
+                    parameter = local_match.group('parameter')
+                    name = '(%s).%s'%(reaction, parameter)
+
+            parameters.append((name, lowerBound, upperBound, startValue))
+
+        return parameters
+    
+    
+    def __create_report(self, report_type, report_key):
+        """Create a report for a particular task, e.g. sensitivity optimization, with key report_key
+        
+        report_type: a string representing the job type, e.g. SO for sensitivity optimization"""
+        if report_type == 'SO':
             listOfReports = self.model.find(xmlns + 'ListOfReports')
+            
+            #Check a report with the current key doesn't already exist. If it does, delete it
+            foundReport = False
+            for report in listOfReports:
+                if report.attrib['key'] == report_key:
+                    foundReport = report
+            if foundReport:
+                listOfReports.remove(foundReport)
+            
             newReport = etree.SubElement(listOfReports, xmlns + 'Report')
             newReport.set('key', report_key)
             newReport.set('name', report_key)
-            newReport.set('taskType', 'sensitivities')
+            newReport.set('taskType', 'optimization')
             newReport.set('seperator', '&#x09;')
             newReport.set('precision', '6')
             
@@ -60,133 +173,222 @@ class CopasiModel:
             newReport_Comment_body.set('xmlns', 'http://www.w3.org/1999/xhtml')
             newReport_Comment_body.text = 'Report automatically generated by condor-copasi'
 
-            newReport_Footer = etree.SubElement(newReport, xmlns + 'Footer')
+            newReport_Body = etree.SubElement(newReport, xmlns + 'Body')
 
-            newReport_Footer_Object = etree.SubElement(newReport_Footer, xmlns + 'Object')
-            newReport_Footer_Object.set('cn','CN=Root,Vector=TaskList[Sensitivities],Object=Result')  
-        except:
-            raise
-        
-        #Next, get the task list and set the optimization task to non-executable if needs be
-        optTask = self.__getTask('optimization')
+            newReport_Body_Object1 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object1.set('cn','String=#----\n')
 
-        #Set the optimization task as scheduled to not run
-        try:
-            optTask.attrib['scheduled'] = 'false'
-        except:
-            raise 
+            newReport_Body_Object2 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object2.set('cn','String=Evals \= ')
+
+            newReport_Body_Object3 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object3.set('cn','CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Reference=Function Evaluations')
+
+            newReport_Body_Object4 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object4.set('cn','String=\nTime \= ')
+
+            newReport_Body_Object5 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object5.set('cn','CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Timer=CPU Time')
+
+            newReport_Body_Object6 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object6.set('cn','String=\n')
+
+            newReport_Body_Object7 = etree.SubElement(newReport_Body, xmlns + 'Object')
+            newReport_Body_Object7.set('cn','CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Reference=Best Value')
+            
+        else:
+            raise Exception('Unknown report type')
         
+    def prepare_sensitvity_optimizations(self):
+        """Generate the files required to perform the sensitivity optimization, 
         
-        #Now, find the sensitivites task, set the appropriate settings (Evaluation/Concentration fluxes of reactions/All variables/executable)
+        This involves creating the appropriate temporary .cps files. The .job files are generated seperately"""
+        #First clear the task list, to ensure that no tasks are set to run
+        self.__clear_tasks()
+        
+        #Next, go to the sensitivities task and set the appropriate variables
         sensTask = self.__getTask('sensitivities')
+        problem = sensTask.find(xmlns + 'Problem')
+        #And open the listofvariables
+        for pG in problem:
+            if (pG.attrib['name'] == 'ListOfVariables'):
+                listOfVariables = pG
+        assert listOfVariables != None
         
-        #Set scheduled to run
-        try:
-            sensTask.attrib['scheduled'] = 'true'
-        except:
-            raise
-         
-        #Set the report
-        try:
-            report = sensTask.find(xmlns + 'Report')
-            
-            #If no report has yet been set, report == None. Therefore, create new report
-            if report == None:
-                report = etree.Element(xmlns + 'Report')
-                optTask.insert(0,report)
-            
-            report.set('reference', report_key)
-            report.set('append', '1')
-            report.set('target', 'auto_output.txt')
-            
-        except:
-            print 'Error finding report'
-            raise
+        #Reset the listOfVariables, and add the appropriate objects
+        listOfVariables.clear()
+        listOfVariables.set('name', 'ListOfVariables')
+
+        #Add a new child element: <ParameterGroup name='Variables'>
+        variables = etree.SubElement(listOfVariables, xmlns + 'ParameterGroup')
+        variables.set('name', 'Variables')
+
+        #Add two new children to variables:
+        #<Parameter name='SingleObject')
+        singleObject = etree.SubElement(variables, xmlns + 'Parameter')
+        singleObject.set('name', 'SingleObject')
+        singleObject.set('type', 'cn')
+        #<Parameter name='ObjectListType'>
+        objectListType = etree.SubElement(variables, xmlns + 'Parameter')
+        objectListType.set('name', 'ObjectListType')
+        objectListType.set('type', 'unsignedInteger')
+        objectListType.set('value', '1')
         
-        #Set the appropriate subtask
-        try:
-            problem = sensTask.find(xmlns + 'Problem')
-        except:
-            raise
-            
-        try:
-            for parameter in problem:
-                if parameter.get('name') == 'SubtaskType':
-                    parameter.set('value', '0')
+        ############
+        
+        #Next, load the optimization task
+        optTask = self.__getTask('optimization')
+        #And set it scheduled to run, and to update the model
+        optTask.attrib['scheduled'] = 'true'
+        optTask.attrib['updateModel'] = 'true'
+        
+        #Find the objective function we wish to change
+        problemParameters = optTask.find(xmlns + 'Problem')
+        for parameter in problemParameters:
+            if (parameter.attrib['name'] == 'ObjectiveExpression'):
+                objectiveFunction = parameter
                 
-                if parameter.get('name') == 'TargetFunctions':
-                    for subParameter in parameter:
-                        if subParameter.get('name') == 'SingleObject':
-                            subParameter.set('value', '')
-                        if subParameter.get('name') == 'ObjectListType':
-                            subParameter.set('value', '21')
-                if parameter.get('name') == 'ListOfVariables':
-                    #Clear the list of variables
-                    parameter.clear()
-                    parameter.set('name', 'ListOfVariables')
-                    variables = etree.SubElement(parameter, xmlns + 'ParameterGroup')
-                    variables.set('name', 'Variables')
-                    
-                    #Add two new children to variables:
-                    #<Parameter name='SingleObject')
-                    singleObject = etree.SubElement(variables, xmlns + 'Parameter')
-                    singleObject.set('name', 'SingleObject')
-                    singleObject.set('type', 'cn')
-                    singleObject.set('value', '')
-                    
-                    #<Parameter name='ObjectListType'>
-                    objectListType = etree.SubElement(variables, xmlns + 'Parameter')
-                    objectListType.set('name', 'ObjectListType')
-                    objectListType.set('type', 'unsignedInteger')
-                    objectListType.set('value', '41')
-                    
-        except:
-            raise
+            if (parameter.attrib['name'] == 'Maximize'):
+                maximizeParameter = parameter
+                
+            #Set the subtask to sensitivities
+            #TODO: At some point allow for other subtasks
+            if (parameter.attrib['name'] == 'Subtask'):
+                parameter.attrib['value'] = 'CN=Root,Vector=TaskList[Sensitivities]'
+
+        assert objectiveFunction != None
+        assert maximizeParameter != None
+
+        #Set the appropriate objective function for the optimization task:
+        objectiveFunction.text = '<CN=Root,Vector=TaskList[Sensitivities],Problem=Sensitivities,Array=Scaled sensitivities array[.]>'
         
-        try:
-            #Save the new copasi xml file in a new location:
-            temp_dir = tempfile.mkdtemp()
-            copasiTempFile = os.path.join(temp_dir, 'auto_copasi.cps')
-            self.model.write(copasiTempFile)
+        ############
+        #Create a new report for the optimization task
+        report_key = 'condor_copasi_sensitivity_optimization_report'
+        self.__create_report('SO', report_key)
+        
+        #And set the new report for the optimization task
+        report = optTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            optTask.insert(0,report)
+        
+        report.set('reference', report_key)
+        report.set('append', '1')
+        
+        
+        #############
+        #get the list of strings to optimize
+        #self.get_optimization_parameters(friendly=False) returns a tuple containing the parameter name as the first element
+        optimizationStrings = []
+        for parameter in self.get_optimization_parameters(friendly=False):
+            optimizationStrings.append(parameter[0])
+        
+        #Build the new xml files and save them
+        i = 0
+        for optString in optimizationStrings:
+            maximizeParameter.attrib['value'] = '1'
+            s = Template('max_$index.txt')
+            report.attrib['target'] = s.substitute(index=i)
             
-            #And run CopasiSE on the new file
-            binary = self.binary
-            self.__copasiExecute(copasiTempFile, temp_dir)
+            #Update the sensitivities object
+            singleObject.set('value',optString)
             
-            #Delete the temp copasi file
-            os.remove(copasiTempFile)
-        except:
-            raise
+            target = os.path.join(self.path, Template('auto_copasi_xml_max_$index.cps').substitute(index=i))
+            
+            self.model.write(target)
         
-        #Read through the sensitivity output file, and extract line 7:
-        try:
-            file = open(os.path.join(temp_dir, 'auto_output.txt'))
-            iterator = 1
-            for f in file.readlines():
-                nameLine = f.rstrip('\n') #extract the 7th line
-                if iterator == 7:
-                    break
-                iterator += 1
-            file.close()
-        except:
-            raise
+            maximizeParameter.attrib['value'] = '0'
+            s = Template('min_$index.txt')
+            report.attrib['target'] = s.substitute(index=i)
+            target = os.path.join(self.path, Template('auto_copasi_xml_min_$index.cps').substitute(index=i))
+            self.model.write(target)
+            i = i + 1
         
-        #Seperate each name from the line containing the names
-        names = nameLine.split('\t')
-        #And remove the first element, which is an empty string
-        names.pop(0)
         
-        #Finally, if strip==True, name is of the format Values[name].InitialValue. Extract the name:
-        if strip:
-            for nameIndex in range(len(names)):
+    def prepare_so_condor_jobs(self):
+        """Prepare the neccessary .job files to submit to condor for the sensitivity optimization task"""
+        ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+        raw_condor_job_string = """#Condor job
+executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
+universe       = vanilla 
+arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
+transfer_input_files = ${copasiFile}
+log =  ${copasiFile}.log  
+error = ${copasiFile}.err
+output = ${copasiFile}.out
+Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "turing.mib.man.ac.uk") && (Machine != "e-cskc38c04.eps.manchester.ac.uk")
+#Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+queue\n""" #TODO: move this into some global setting
+            
+        for i in range(len(self.get_optimization_parameters())):
+            for max in ('min', 'max'):
+                copasi_file = Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max)
+                condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+                condor_job_filename = os.path.join(self.path, Template('auto_condor_${max}_$index.job').substitute(index=i, max=max))
+                condor_file = open(condor_job_filename, 'w')
+                condor_file.write(condor_job_string)
+                condor_file.close()
+                #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+                condor_jobs.append({
+                    'spec_file': condor_job_filename,
+                    'std_output_file': str(copasi_file) + '.out',
+                    'std_error_file': str(copasi_file) + '.err',
+                    'log_file': str(copasi_file) + '.log',
+                    'job_output': max + '_' + str(i) + '.txt'
+                })
+
+        return condor_jobs
+        
+    def get_so_results(self):
+        """Collate the output files from a successful sensitivity optimization run. Return a list of the results"""
+        #Read through output files
+        parameters=self.get_optimization_parameters(friendly=True)
+        parameterRange = range(len(parameters))
+
+        results = []
+
+        for i in parameterRange:
+            result = {
+                'name': parameters[i][0],
+                'max_result': '',
+                'max_evals' : '',
+                'max_cpu' : '',
+                'min_result' : '',
+                'min_evals' : '',
+                'min_cpu' : '',
+            }
+            #Read min and max files
+            for max in ['max', 'min']:
+                iterator = 0
+                
                 try:
-                    start = names[nameIndex].index('[') + 1
-                    end = names[nameIndex].rindex(']')            
-                    names[nameIndex] = str(names[nameIndex][start:end])
+                    file = open(os.path.join(self.path, Template('${max}_$index.txt').substitute(index=i, max=max)),'r')
+                    output=[None for r in range(4)]
+                    for f in file.readlines():
+                        value = f.rstrip('\n') #Read the file line by line.
+                        #Line 0: seperator. Line 1: Evals. Line 2: Time. Line 3: result
+                        index=parameterRange.index(i)
+                        output[iterator] = value
+                        iterator = (iterator + 1)%4
+                    file.close()
+                    evals = output[1].split(' ')[2]
+                    cpu_time = output[2].split(' ')[2]
+                    sens_result = output[3]
+                    
+                    result[max + '_result'] = sens_result
+                    result[max + '_cpu'] = cpu_time
+                    result[max + '_evals'] = evals
+                    
                 except:
-                    pass
+                    raise
+                    
+            results.append(result)
             
-        #Remove the temp folder and it's contents
-        shutil.rmtree(temp_dir)
-        
-        return names
+        return results
