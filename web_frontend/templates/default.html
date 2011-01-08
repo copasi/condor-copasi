@@ -35,7 +35,7 @@ Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
                 <ul>
                     <li><a href="http://{{request.get_host}}/">Home</a></li>
                     {% if user.is_authenticated %}
-                    <li>My Account</li>
+                    <li><a href="http://{{request.get_host}}/my_account/">My Account</a></li>
                     {% block accountlist %}{% endblock %}
                     <li><a href="http://{{request.get_host}}/tasks">Tasks</a></li>
                     {% block tasklist %}{% endblock %}

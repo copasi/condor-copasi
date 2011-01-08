@@ -1,0 +1,34 @@
+{% extends "my_account/my_account.html" %}
+
+{% block breadcrumbs_l3 %} Completed Jobs &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+{% if completed_job_count == 0 %}
+
+<p>You currently have no completed jobs stored on the system.
+
+{% else %}
+
+<p>You currently have <b>{{completed_job_count}}</b> completed job{%if completed_job_count > 1%}s{%endif%} stored on the system. Click on a job to see more information, and to download results.
+<p>
+<table class="jobtable">
+    <tr>
+        <th>Job name</th>
+        <th>Job type</th>
+        <th>Number of condor jobs</th>
+        <th>Finish time</th>
+    </tr>
+    {% for job, condor_jobs in jobs %}
+    <tr>
+        <td>{{job.name}}</td>
+        <td>{{job.get_job_type_display}}</td>
+        <td>{{condor_jobs|length}}</td>
+        <td>{{job.finish_time}}</td>        
+    </tr>
+    {% endfor %}
+    
+</table>
+
+{% endif %}
+{% endblock %}

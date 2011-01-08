@@ -113,6 +113,7 @@ for job in waiting:
             #TODO: doesn't do validation step yet. This step should probably be condorised.
             #Mark the job as complete
             job.status='C'
+            job.finish_time=datetime.datetime.today()
             job.save()
     except:
         job.status='E'

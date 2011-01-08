@@ -19,7 +19,7 @@ class Job(models.Model):
         ('U', 'Unconfirmed'),
         ('N', 'New'),
         ('S', 'Submitted'),
-        ('W', 'Finished, waiting for results'),
+        ('W', 'Finished, waiting for validation'),
         ('C', 'Complete'),
         ('E', 'Error'),
     )

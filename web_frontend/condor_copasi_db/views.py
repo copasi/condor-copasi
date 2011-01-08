@@ -80,7 +80,6 @@ def sensitivityOptimization(request):
                     return HttpResponseRedirect('/tasks/new/sensitivity_optimization/confirm/' + str(job.id))
             except:
                     file_error = 'The submitted file is not a valid Copasi xml file'
-                    raise
     else:
         form = UploadModelForm()
         file_error = False
@@ -138,5 +137,66 @@ def sensitivityOptimizationConfirm(request, job_id):
         
     )
     parameters =  model.get_optimization_parameters(friendly=True)
-
     return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
+    
+    
+@login_required
+def myAccount(request):
+    pageTitle = 'My Account'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    return render_to_response('my_account/my_account.html', locals(), RequestContext(request))
+    
+    
+@login_required
+def myAccountRunningJobs(request):
+    pageTitle = 'Newly Submitted and Running Jobs'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    
+    new_jobs = models.Job.objects.filter(user=request.user, status = 'N')
+    submitted_jobs= models.Job.objects.filter(user=request.user, status='S')
+    
+    jobs=[]
+    
+    for job in new_jobs:
+        jobs.append((job, []))
+    
+    for job in submitted_jobs:
+        condor_jobs = models.CondorJob.objects.filter(parent=job)
+        jobs.append((job, condor_jobs))
+        
+    
+    return render_to_response('my_account/running_jobs.html', locals(), RequestContext(request))
+    
+@login_required
+def myAccountCompletedJobs(request):
+    pageTitle = 'Completed Jobs'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    
+    completed_jobs = models.Job.objects.filter(user=request.user, status='C')
+    
+    jobs=[]
+    
+    for job in completed_jobs:
+        condor_jobs = models.CondorJob.objects.filter(parent=job)
+        jobs.append((job, condor_jobs))
+        
+    return render_to_response('my_account/completed_jobs.html', locals(), RequestContext(request))
+
+@login_required
+def myAccountJobErrors(request):
+    pageTitle = 'Job Errors'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    return render_to_response('my_account/errors.html', locals(), RequestContext(request))
+    
+    
+@login_required
+def jobDetails(request, id):
+    return

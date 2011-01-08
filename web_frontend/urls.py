@@ -22,6 +22,11 @@ urlpatterns = patterns('',
     (r'tasks/$', db_tasks),
     (r'tasks/new/sensitivity_optimization/$', db.sensitivityOptimization),
     (r'tasks/new/sensitivity_optimization/confirm/(?P<job_id>\w+)/$', db.sensitivityOptimizationConfirm),
+    (r'my_account/$', db.myAccount),
+    (r'my_account/jobs/running$', db.myAccountRunningJobs),
+    (r'my_account/jobs/completed$', db.myAccountCompletedJobs),
+    (r'my_account/jobs/errors$', db.myAccountJobErrors),
+    (r'my_account/jobs/details/(?P<id>d+)$', db.jobDetails),
 )
 
 if settings.DEBUG:

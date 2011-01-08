@@ -1,0 +1,23 @@
+{% extends "my_account/my_account.html" %}
+
+{% block breadcrumbs_l3 %} Running Jobs &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+{% if submitted_job_count == 0 %}
+You currently have no jobs running on the system. Once jobs have finished running, they can be viewed in the Completed Jobs section of your account.
+
+{% else %}
+
+{% for job, condor_jobs in jobs %}
+<P>{{job.name}}
+<br>
+{% for condor_job in condor_jobs %}
+{{condor_job.queue_id}}
+{%endfor%}
+<hr>
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}

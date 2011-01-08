@@ -68,6 +68,23 @@ div.review th, div.review td{
     padding: 0.3em;
     border: 1px dotted gray;
 }
+
+table.jobtable {
+    border-collapse: collapse;
+    background: #e6e6e6;
+}
+
+table.jobtable th{
+    font-weight: bold;
+}
+table.jobtable th, table.jobtable td{
+    margin: 0px;
+    border: 1px dotted gray;
+    border-left: 0;
+    border-right: 0;
+    padding: 5px;
+}
+
 div.message{
     background: #f1ecff;
     font-weight: bold;
