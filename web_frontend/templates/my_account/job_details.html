@@ -1,0 +1,39 @@
+{% extends "my_account/my_account.html" %}
+
+{% block breadcrumbs_l3 %} Job Details &gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+{% if job.status == 'C' %}
+This job has completed.
+<ul>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Click here</a></b> to view the results</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/download/">Click here</a></b> to download the directory containing the result output files</li>
+</ul>
+{% endif %}
+
+<div class="review">
+    <table>
+        <tr><th>Job name:</th><td>{{job.name}}</td></tr>
+        <tr><th>Job type:</th><td><b>{{job.get_job_type_display}}</b>
+        {% if job.job_type == 'SO' %}
+        <br><b><em>Sensitivities object:</em></b> {{model.get_sensitivities_object}}
+        <br><b><em>Optimization algorithm:</em></b> {{model.get_optimization_method}}
+        {% endif %}
+        </td></tr>
+        <tr><th>Filename</th><td>{{job.model_name}}</td></tr>
+        <tr><th>Status:</th><td>{{job.get_status_display}}</td></tr>
+        <tr><th>Condor status:</td><td><b>Total: {{total_condor_jobs}} jobs</b>
+                                     <br>Running: <b>{{running_condor_jobs}}</b>
+                                     <br>Idle: <b>{{idle_condor_jobs}}</b>
+                                     <br>Held: <b>{{held_condor_jobs}}</b>
+                                     <br>Finished: <b>{{finished_condor_jobs}}</b></td>
+        <tr><th>Submission time:</th><td>{{job.submission_time}}</td></tr>
+        {% if job.status == 'C' %}
+        <tr><th>Finish time:</th><td>{{job.finish_time}}</td></tr>
+        {% endif %}
+    </table>
+</div>
+
+<p>Note: this information is updated every 2 minutes TODO:link to settings.
+{% endblock %}

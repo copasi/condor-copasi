@@ -17,8 +17,8 @@ class Job(models.Model):
     #results = models.CharField(max_length=255, null=True)
     STATUS_CHOICES = (
         ('U', 'Unconfirmed'),
-        ('N', 'New'),
-        ('S', 'Submitted'),
+        ('N', 'New, waiting for Condor submission'),
+        ('S', 'Submitted to Condor'),
         ('W', 'Finished, waiting for validation'),
         ('C', 'Complete'),
         ('E', 'Error'),

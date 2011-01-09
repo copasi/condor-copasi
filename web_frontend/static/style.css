@@ -59,6 +59,7 @@ div.review {
 
 div.review table{
     border-collapse: collapse;
+    border: 1px solid gray;
 }
 div.review th{
     font-weight: bold;
@@ -73,17 +74,22 @@ div.review th, div.review td{
 table.jobtable {
     border-collapse: collapse;
     background: #e6e6e6;
+    border: 1px solid gray;
+    font-size: 12px;
+}
+
+table.jobtable th, table.jobtable td{
+    margin: 0px;
+    padding: 5px;
+    border-left: 1px solid gray;
+    border-right: 1px solid gray;
+    border-top: 1px dotted gray;
+    border-bottom: 1px dotted gray;
 }
 
 table.jobtable th{
     font-weight: bold;
-}
-table.jobtable th, table.jobtable td{
-    margin: 0px;
-    border: 1px dotted gray;
-    border-left: 0;
-    border-right: 0;
-    padding: 5px;
+    border: 1px solid gray;
 }
 
 div.message{

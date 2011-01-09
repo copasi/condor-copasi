@@ -3,7 +3,7 @@ import datetime, os, shutil
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
 import web_frontend.condor_copasi_db.views
@@ -198,5 +198,74 @@ def myAccountJobErrors(request):
     
     
 @login_required
-def jobDetails(request, id):
-    return
+def jobDetails(request, job_name):
+    pageTitle = 'Job Details'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    running_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='R'))
+    idle_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='I'))
+    finished_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='F'))
+    held_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='H'))
+    total_condor_jobs = running_condor_jobs + idle_condor_jobs + held_condor_jobs + finished_condor_jobs
+    
+    return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
+    
+@login_required
+def jobOutput(request, job_name):
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))    
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+        
+    if job.status != 'C':
+        return web_frontend_views.handle_error(request, 'Cannot Display Output',['The requested job has not completed yet'])
+        
+    try:
+        model = CopasiModel(job.get_filename())
+        if job.job_type == 'SO':
+            results = model.get_so_results()
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    pageTitle = 'Job Output: ' + str(job.name)
+    return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
+    
+@login_required
+def jobDownload(request, job_name):
+    """Generate a tar.gz file of the results directory, and return it"""
+    #Check to see if the tar.gz file exists already, if not create it
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    filename = os.path.join(model.path, str(job.name) + '.tar.gz')
+    if not os.path.isfile(filename) or True:
+        import tarfile
+        tar = tarfile.open(name=filename, mode='w:gz')
+        tar.add(model.path, 'Results')
+        tar.close()
+    result_file = open(filename, 'r')
+    response = HttpResponse(result_file, content_type='application/x-gzip')
+    response['Content-Disposition'] = 'attachment; filename=' + job.name + '.tar.gz'
+    response['Content-Length'] = os.path.getsize(filename)
+
+
+
+
+    return response

@@ -1,0 +1,29 @@
+{% extends "my_account/my_account.html" %}
+
+
+{% block breadcrumbs_l3 %} Job Details &gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a>&gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Output</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+{% if job.job_type == 'SO' %}
+<div class = "review">
+    <p>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}</b></p>
+    <table>
+        <tr><th>Parameter</th><th>Minimum value</th><th>Maximum value</th><th>Min CPU time</th><th>Min evals</th><th>Max CPU time</th><th>Max Evals</th></tr>
+        {% for result in results %}
+        <tr>
+            <td><b>{{result.name}}</b></td>
+            <td>{{result.min_result}}</td>
+            <td>{{result.max_result}}</td>
+            <td>{{result.min_cpu}}</td>
+            <td>{{result.min_evals}}</td>
+            <td>{{result.max_cpu}}</td>
+            <td>{{result.max_evals}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+
+{% endblock %}
