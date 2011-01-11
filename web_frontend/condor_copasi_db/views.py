@@ -46,14 +46,25 @@ class UploadModelForm(forms.Form):
             return self.cleaned_data['job_name']
         except AssertionError:
             raise forms.ValidationError('A job with this name already exists.')
-        
+
+class StochasticUploadModelForm(UploadModelForm):
+      runs = forms.IntegerField(label='Repeats', help_text='The number of repeats to perform')        
+
 
 @login_required
-def sensitivityOptimization(request):
-    pageTitle = 'Optimization of Sensitivities'
-    #Upload page for a new sensitvity optimization task
+def newTask(request, type):
+    """Upload page for new tasks"""
+    
+    if type == 'SO':
+        pageTitle = 'Optimization of Sensitivities'
+        Form = UploadModelForm
+    elif type == 'SS':
+        pageTitle = 'Stochastic Simulation'
+        Form = StochasticUploadModelForm
+    else:
+        return web_frontend_views.handle_error(request, 'Unknown job type')    
     if request.method == 'POST':
-        form = UploadModelForm(request.POST, request.FILES, request=request)
+        form = Form(request.POST, request.FILES, request=request)
         if form.is_valid():
             #file can be accessed by request.FILES['file']
             model_file = request.FILES['model_file']
@@ -61,11 +72,15 @@ def sensitivityOptimization(request):
             try:
                 temp_file_path = model_file.temporary_file_path()
                 m = CopasiModel(temp_file_path)
-                if m.is_valid('SO') != True:
-                    file_error = m.is_valid('SO')
+                if m.is_valid(type) != True:
+                    file_error = m.is_valid(type)
                 else:
                     #Otherwise add a new job as unconfirmed
-                    job = models.Job(job_type='SO', user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today())
+                    if type == 'SS':
+                        runs=int(form.cleaned_data['runs'])
+                    else:
+                        runs = None
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs)
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
                     user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))
@@ -73,23 +88,26 @@ def sensitivityOptimization(request):
                         os.mkdir(user_dir)
                     #Make a new unique directory for the file
                     job_dir = os.path.join(user_dir, str(job.id))
+                    #If the dir already exists, rename it
+                    if os.path.exists(job_dir):
+                        os.rename(job_dir, job_dir + '.old')
                     os.mkdir(job_dir)
                     #And set the new model filename as follows:
                     destination=os.path.join(job_dir, model_file.name)
                     handle_uploaded_file(model_file, destination)
-                    return HttpResponseRedirect('/tasks/new/sensitivity_optimization/confirm/' + str(job.id))
+                    return HttpResponseRedirect('/tasks/new/confirm/' + str(job.id))
             except:
                     file_error = 'The submitted file is not a valid Copasi xml file'
+                    
     else:
-        form = UploadModelForm()
+        form = Form()
         file_error = False
         
-    return render_to_response('tasks/sensitivity_optimization.html', locals(), RequestContext(request))
+    return render_to_response('tasks/new_task.html', locals(), RequestContext(request))
     
 @login_required
-def sensitivityOptimizationConfirm(request, job_id):
+def taskConfirm(request, job_id):
     #Prompt the user for confirmation that the job is set up properly
-    #List: the optimization method, variables to be optimized etc.
     #On confirm, submit the job to the database
     try:
         job = models.Job.objects.get(user=request.user, id=job_id)
@@ -98,46 +116,62 @@ def sensitivityOptimizationConfirm(request, job_id):
         return web_frontend_views.handle_error(request, 'Error Confirming Job',['The current job has already been confirmed'])
     except:
         return web_frontend_views.handle_error(request, 'Error Confirming Job',['The current job could not be found. Plase try submitting again'])
+        
+    type = job.job_type
     if request.method == 'POST':
         #Check if the request was confirmed or cancelled
         if 'confirm_job' in request.POST:
-            #Prepare the temporary files for the senstivity optimization task
-            model = CopasiModel(job.get_filename())
-            model.prepare_sensitvity_optimizations()
+            try:
+                #Prepare the temporary files for the senstivity optimization task
+                model = CopasiModel(job.get_filename())
+                if job.job_type == 'SO':
+                    model.prepare_so_task()
+                elif job.job_type == 'SS':
+                    model.prepare_ss_task(job.runs)
 
-            #Mark the job as confirmed
-            job.status = 'N'
-            job.save()
+                #Mark the job as confirmed
+                job.status = 'N'
+                job.save()
 
-            #Store a message stating that the job was successfully confirmed
-            request.session['message'] = 'Job succesfully sumbitted.'
+                #Store a message stating that the job was successfully confirmed
+                request.session['message'] = 'Job succesfully sumbitted.'
 
-            return HttpResponseRedirect('/tasks/')
+                return HttpResponseRedirect('/tasks/')
+            except:
+                job.delete()
+                return web_frontend_views.handle_error(request, 'An error occured preparing temporary files',['The job was not submitted to condor'])
+                
         
         elif 'cancel_job' in request.POST:
             job.delete()
             return HttpResponseRedirect('/tasks/')
             
     pageTitle = 'Confirm Sensitivity Optimization Task'
-    try:
-        job = models.Job.objects.get(user=request.user, id=job_id)
-    #TODO:exception handle here.
-    except:
-        pass
     
     job_filename = job.get_filename()
     
-    model = CopasiModel(job_filename)    
-    job_details = (
-        ('Job Name', job.name),
-        ('File Name', job.model_name),
-        ('Model Name', model.get_name()),
-        ('Optimization algorithm', model.get_optimization_method()),
-        ('Sensitivities Object', model.get_sensitivities_object()),
+    model = CopasiModel(job_filename)  
+    if job.job_type == 'SO':  
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Optimization algorithm', model.get_optimization_method()),
+            ('Sensitivities Object', model.get_sensitivities_object()),
+            
+        )
+        parameters =  model.get_optimization_parameters(friendly=True)
+        return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
         
-    )
-    parameters =  model.get_optimization_parameters(friendly=True)
-    return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
+    elif job.job_type == 'SS':
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Time course algorithm', model.get_timecourse_method()),
+            ('Number of runs', job.runs)
+        )
+        return render_to_response('tasks/stochastic_simulation_confirm.html', locals(), RequestContext(request))
     
     
 @login_required
@@ -241,6 +275,28 @@ def jobOutput(request, job_name):
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
+  
+  
+@login_required
+def jobResultDownload(request, job_name):
+    """Return the file containing the job results file"""
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    filename = os.path.join(model.path, 'results.txt')
+    if not os.path.isfile(filename):
+        return web_frontend_views.handle_error(request, 'Cannot Return Output',['There was an internal error processing the results file'])
+    result_file = open(filename, 'r')
+    response = HttpResponse(result_file, content_type='text/tab-separated-values')
+    response['Content-Disposition'] = 'attachment; filename=' + job.name + '_results.txt'
+    response['Content-Length'] = os.path.getsize(filename)
+    
+    return response
     
 @login_required
 def jobDownload(request, job_name):
@@ -258,14 +314,13 @@ def jobDownload(request, job_name):
     if not os.path.isfile(filename) or True:
         import tarfile
         tar = tarfile.open(name=filename, mode='w:gz')
-        tar.add(model.path, 'Results')
+        tar.add(model.path, job.name)
         tar.close()
     result_file = open(filename, 'r')
     response = HttpResponse(result_file, content_type='application/x-gzip')
     response['Content-Disposition'] = 'attachment; filename=' + job.name + '.tar.gz'
     response['Content-Length'] = os.path.getsize(filename)
 
-
-
-
     return response
+    
+

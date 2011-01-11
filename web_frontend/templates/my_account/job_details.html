@@ -8,7 +8,8 @@
 This job has completed.
 <ul>
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Click here</a></b> to view the results</li>
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/download/">Click here</a></b> to download the directory containing the result output files</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Click here</a></b> to download the results</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Click here</a></b> to download the directory containing all output files</li>
 </ul>
 {% endif %}
 
@@ -19,6 +20,10 @@ This job has completed.
         {% if job.job_type == 'SO' %}
         <br><b><em>Sensitivities object:</em></b> {{model.get_sensitivities_object}}
         <br><b><em>Optimization algorithm:</em></b> {{model.get_optimization_method}}
+        {% endif %}
+        {% if job.job_type == 'SS' %}
+        <br><b><em>Time course method:</em></b> {{model.get_timecourse_method}}
+        <br><b><em>Repeats:</em></b> {{job.runs}}
         {% endif %}
         </td></tr>
         <tr><th>Filename</th><td>{{job.model_name}}</td></tr>

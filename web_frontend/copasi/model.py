@@ -3,6 +3,20 @@ from web_frontend import settings
 from lxml import etree
 from string import Template
 xmlns = '{http://www.copasi.org/static/schema}'
+raw_condor_job_string = """#Condor job
+executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
+universe       = vanilla 
+arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
+transfer_input_files = ${copasiFile}
+log =  ${copasiFile}.log  
+error = ${copasiFile}.err
+output = ${copasiFile}.out
+Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "turing.mib.man.ac.uk") && (Machine != "e-cskc38c04.eps.manchester.ac.uk")
+#Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+queue\n"""
+
 
 class CopasiModel:
     """Class representing a Copasi model"""
@@ -28,7 +42,21 @@ class CopasiModel:
             if len(self.get_optimization_parameters()) == 0:
                 return 'No parameters have been set for the optimization task'
 
-        return True
+            return True
+            
+        elif job_type == 'SS':
+            if self.get_timecourse_method() == 'Deterministic (LSODA)':
+                return 'Time course task must have a valid Stochastic or Hybrid algorithm set'
+            try:
+                timeTask = self.__getTask('timeCourse')
+                timeReport = timeTask.find(xmlns + 'Report')
+                assert timeReport.attrib['reference'] != ''
+            except:
+                return 'Time course task must have a valid report selected'
+            return True
+            
+        else:
+            return True
         
     def __copasiExecute(self, filename, tempdir):
         """Private function to run Copasi locally in a temporary folder."""
@@ -68,6 +96,11 @@ class CopasiModel:
         modelTree = self.model.find(xmlns + 'Model')
         return modelTree.attrib['name']
 
+    def get_timecourse_method(self):
+        """Returns the algorithm set for the time course task"""
+        timeTask = self.__getTask('timeCourse')
+        timeMethod = timeTask.find(xmlns + 'Method')
+        return timeMethod.attrib['name']
 
     def get_optimization_method(self):
         """Returns the algorithm set for the optimization task"""
@@ -199,7 +232,7 @@ class CopasiModel:
         else:
             raise Exception('Unknown report type')
         
-    def prepare_sensitvity_optimizations(self):
+    def prepare_so_task(self):
         """Generate the files required to perform the sensitivity optimization, 
         
         This involves creating the appropriate temporary .cps files. The .job files are generated seperately"""
@@ -313,20 +346,7 @@ class CopasiModel:
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
         condor_jobs = []
-        raw_condor_job_string = """#Condor job
-executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
-universe       = vanilla 
-arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
-transfer_input_files = ${copasiFile}
-log =  ${copasiFile}.log  
-error = ${copasiFile}.err
-output = ${copasiFile}.out
-Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "turing.mib.man.ac.uk") && (Machine != "e-cskc38c04.eps.manchester.ac.uk")
-#Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
-should_transfer_files = YES
-when_to_transfer_output = ON_EXIT
-queue\n""" #TODO: move this into some global setting
-            
+                    
         for i in range(len(self.get_optimization_parameters())):
             for max in ('min', 'max'):
                 copasi_file = Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max)
@@ -346,7 +366,7 @@ queue\n""" #TODO: move this into some global setting
 
         return condor_jobs
         
-    def get_so_results(self):
+    def get_so_results(self, save=False):
         """Collate the output files from a successful sensitivity optimization run. Return a list of the results"""
         #Read through output files
         parameters=self.get_optimization_parameters(friendly=True)
@@ -357,12 +377,12 @@ queue\n""" #TODO: move this into some global setting
         for i in parameterRange:
             result = {
                 'name': parameters[i][0],
-                'max_result': '',
-                'max_evals' : '',
-                'max_cpu' : '',
-                'min_result' : '',
-                'min_evals' : '',
-                'min_cpu' : '',
+                'max_result': '?',
+                'max_evals' : '?',
+                'max_cpu' : '?',
+                'min_result' : '?',
+                'min_evals' : '?',
+                'min_cpu' : '?',
             }
             #Read min and max files
             for max in ['max', 'min']:
@@ -391,4 +411,103 @@ queue\n""" #TODO: move this into some global setting
                     
             results.append(result)
             
+        #Finally, if save==True, write these results to file results.txt
+        if save:
+            if not os.path.isfile(os.path.join(self.path, 'results.txt')):
+                results_file = open(os.path.join(self.path, 'results.txt'), 'w')
+                header_line = 'Parameter name\tMin result\tMax result\tMin CPU time\tMin Evals\tMax CPU time\tMax Evals\n'
+                results_file.write(header_line)
+                for result in results:
+                    result_line = result['name'] + '\t' + result['min_result'] + '\t' + result['max_result'] + '\t' + result['min_cpu'] + '\t' + result['min_evals'] + '\t' + result['max_cpu'] + '\t' + result['max_evals'] + '\n'
+                    results_file.write(result_line)
+                results_file.close()
         return results
+
+
+
+    def prepare_ss_task(self, runs):
+        """Prepares the temp copasi files needed to run n stochastic simulation runs""" 
+        #First clear the task list, to ensure that no tasks are set to run
+        self.__clear_tasks()
+
+        timeTask = self.__getTask('timeCourse')
+        
+        #And set it scheduled to run, and to update the model
+        timeTask.attrib['scheduled'] = 'true'
+        timeTask.attrib['updateModel'] = 'true'
+
+        report = timeTask.find(xmlns + 'Report')
+
+        #Generate a copasi file for each run
+        for i in range(runs):
+            report.set('append', '1')
+            report.set('target', str(i) + '_out.txt')
+            filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
+            self.model.write(filename)
+            
+        return
+            
+    def prepare_ss_condor_jobs(self, runs):
+        """Prepare the neccessary .job files to submit to condor for the stochastic simulation task"""
+        ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+                    
+        for i in range(runs):
+            copasi_file = os.path.join(self.path, Template('auto_copasi_$index.cps').substitute(index=i))
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+            condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+
+        return condor_jobs
+        
+    def get_ss_output(self, runs):
+        """Collate the results from the stochastic simulation task"""
+        import numpy
+        
+        
+        
+        
+#        files = []
+#        for i in range(runs):
+#            try:
+#                file = open(os.path.join(self.path, str(i) + '_out.txt'), 'r')
+#                files.append(file)
+#            except:
+#                raise
+#        #Open the result file for writing
+#        result = open(os.path.join(self.path, 'result.txt'), 'w')
+#        #Copy the first output file to result
+#        first = files.pop()
+#        for line in first:
+#            result.write(line)
+#        first.close()
+#        result.close()
+#        
+#        for file in files:
+#            result = open(os.path.join(self.path, 'result.txt'), 'r')
+#            file_lines = file.readlines()
+#            result_lines = result.readlines()
+#            result.close()
+#            result = open(os.path.join(self.path, 'result.txt'), 'w')
+#            for i in range(len(file_lines)):
+#                if i==0:
+#                    ##Header line
+#                    result.write(result_lines[i])
+#                else:
+#                    file_line = file_lines[i]
+#                    result_line = result_lines[i]
+#                    
+#                    result.write(file_line + result_line)
+#            result.close()
+#            file.close()

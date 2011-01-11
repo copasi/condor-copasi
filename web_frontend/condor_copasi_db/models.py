@@ -4,7 +4,10 @@ from web_frontend import settings
 import os, shutil
 
 class Job(models.Model):
-    JOB_TYPE_CHOICES = (('SO', 'Sensitivity Optimization'),)
+    JOB_TYPE_CHOICES = (
+        ('SO', 'Sensitivity Optimization'),
+        ('SS', 'Stochastic Simulation'),
+    )
     #The type of job, e.g. sensitivity optimization
     job_type = models.CharField(max_length=2, choices=JOB_TYPE_CHOICES)
     #The user who submitted the job
@@ -31,8 +34,9 @@ class Job(models.Model):
     submission_time = models.DateTimeField()
     #The time the job was marked as finished
     finish_time=models.DateTimeField(null=True)
-    #The file containing the processed result output
-    #output_file=models.CharField(max_length=255, null=True)
+
+    #The number of runs to do. Only required for some jobs
+    runs = models.IntegerField(null=True, blank=True)
     
     class Meta:
         unique_together = ('user', 'name')
@@ -46,7 +50,8 @@ class Job(models.Model):
         return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id), self.model_name)
         
     def delete(self, *args, **kwargs):
-        """Override the build-in delete. First delete the model directory. Then call super.delete"""
+        """Override the build-in delete. First delete the model directory. Then remove all child jobs. Finally call super.delete"""
+        
         shutil.rmtree(self.get_path())
         super(Job, self).delete(*args, **kwargs)
         
@@ -80,3 +85,11 @@ class CondorJob(models.Model):
     
     def __unicode__(self):
         return unicode(self.queue_id)
+        
+        def delete(self, *args, **kwargs):
+            """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
+            if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
+                import subprocesses
+                p = subprocesses.Popen('condor_rm', job.queue_id)
+                p.comminucate()
+            super(Job, self).delete(*args, **kwargs)

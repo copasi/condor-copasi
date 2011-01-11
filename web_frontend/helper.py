@@ -22,19 +22,22 @@ def condor_submit(condor_file):
 new_jobs = models.Job.objects.filter(status='N')
 
 for job in new_jobs:
+    #Load the model
+    model = CopasiModel(job.get_filename())
+    #Prepare the .job files
     if job.job_type == 'SO':
-        #Load the model
-        model = CopasiModel(job.get_filename())
-        #Prepare the .job files
         condor_jobs = model.prepare_so_condor_jobs()
+    elif job.job_type == 'SS':
+        model.prepare_ss_task(job.runs)
+        condor_jobs = model.prepare_ss_condor_jobs(job.runs)
+    
+    for cj in condor_jobs:
+        condor_job_id = condor_submit(cj['spec_file'])
+        condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
+        condor_job.save()
         
-        for cj in condor_jobs:
-            condor_job_id = condor_submit(cj['spec_file'])
-            condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
-            condor_job.save()
-            
-        job.status = 'S'
-        job.save()
+    job.status = 'S'
+    job.save()
 
 ############        
 
@@ -115,7 +118,12 @@ for job in waiting:
             job.status='C'
             job.finish_time=datetime.datetime.today()
             job.save()
+            model.get_so_results(save=True)
+        elif job.job_type == 'SS':
+            model.get_ss_output(job.runs)
+            
     except:
+        raise
         job.status='E'
         job.save()
         
@@ -123,4 +131,4 @@ complete = models.Job.objects.filter(status='C')
 
 for job in complete:
     model = CopasiModel(job.get_filename())
-    print model.get_so_results()
+

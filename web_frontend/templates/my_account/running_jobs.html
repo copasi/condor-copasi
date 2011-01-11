@@ -9,14 +9,26 @@ You currently have no jobs running on the system. Once jobs have finished runnin
 
 {% else %}
 
-{% for job, condor_jobs in jobs %}
-<P>{{job.name}}
-<br>
-{% for condor_job in condor_jobs %}
-{{condor_job.queue_id}}
-{%endfor%}
-<hr>
-{% endfor %}
+<p>You currently have <b>{{completed_job_count}}</b> new and submitted job{%if completed_job_count > 1%}s{%endif%}. Click on a job to see more information.
+<p>
+<table class="jobtable">
+    <tr>
+        <th>Job name</th>
+        <th>Job type</th>
+        <th>Number of condor jobs</th>
+        <th>Start time</th>
+    </tr>
+    {% for job, condor_jobs in jobs %}
+
+    <tr>
+        <td><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a></td>
+        <td>{{job.get_job_type_display}}</td>
+        <td>{{condor_jobs|length}}</td>
+        <td>{{job.start_time}}</td>
+    </tr>
+    {% endfor %}
+    
+</table>
 
 {% endif %}
 

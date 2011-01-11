@@ -1,6 +1,14 @@
 {% extends "tasks/tasks.html" %}
 
-{% block breadcrumbs_l3 %} Sensitivity Optimization &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+{% block breadcrumbs_l3 %}
+{% if type == "SO" %} 
+Sensitivitiy Optimization
+{%endif%}
+{% if type == "SS" %}
+Stochastic Simulation
+{% endif %}
+
+&gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
 
