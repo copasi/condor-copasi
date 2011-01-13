@@ -7,7 +7,7 @@
 
 {% if job.job_type == 'SO' %}
 <div class = "review">
-    <p>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}</b></p>
+    <p><h3>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}<h3></b></p>
     <table>
         <tr><th>Parameter</th><th>Minimum value</th><th>Maximum value</th><th>Min CPU time</th><th>Min evals</th><th>Max CPU time</th><th>Max Evals</th></tr>
         {% for result in results %}
@@ -24,6 +24,11 @@
     </table>
 </div>
 {% endif %}
+{% if job.job_type == 'SS' %}
+<div class = "review" style="background: white">
+<img src="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/plot.png" alt="Plot" />
+</div>
 
+{% endif %}
 
 {% endblock %}

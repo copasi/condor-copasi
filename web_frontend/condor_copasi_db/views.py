@@ -1,5 +1,5 @@
 from django.shortcuts import render_to_response, redirect
-import datetime, os, shutil
+import datetime, os, shutil, re
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -48,7 +48,15 @@ class UploadModelForm(forms.Form):
             raise forms.ValidationError('A job with this name already exists.')
 
 class StochasticUploadModelForm(UploadModelForm):
-      runs = forms.IntegerField(label='Repeats', help_text='The number of repeats to perform')        
+    runs = forms.IntegerField(label='Repeats', help_text='The number of repeats to perform')        
+    
+    def clean_runs(self):
+        runs = self.cleaned_data['runs']
+        try:
+            assert runs > 0
+            return runs
+        except AssertionError:
+            raise forms.ValidationError('There must be at least one run')
 
 
 @login_required
@@ -323,4 +331,52 @@ def jobDownload(request, job_name):
 
     return response
     
+@login_required
+def ss_plot(request, job_name):
+    """Return the plot image for the results from a stochastic simulation"""
+    import numpy as np
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    try:
+        assert job.status == 'C'
+        results = np.loadtxt(os.path.join(job.get_path(), 'results.txt'), skiprows=1, delimiter='\t', unpack=True)
+        labels = open(os.path.join(job.get_path(), 'results.txt')).readlines()[0].rstrip('\n').split('\t')
+        
+    except:
+        raise
+        return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
+    try:
+        import matplotlib.pyplot as plt
 
+#        fig = plt.figure()
+#        
+#        for i in range(len(results)-1):
+#            plt.plot(results[0], results[i+1])
+
+        fig = plt.figure()
+        plt.title(job.name + ' (' + str(job.runs) + ' repeats)')
+        plt.xlabel('Time')
+        plt.ylabel('Particle number')
+        
+        color_list = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black']
+        label_str = r'(?P<name>.+)\[.+\] (mean|stdev)$'
+        label_re = re.compile(label_str)
+        
+        for i in range(((len(results) -1) / 2)):
+            label=label_re.match(labels[2*i + 1]).group('name')
+            upper_bound = results[2*i + 1] + results[2*i+2]
+            lower_bound = results[2*i + 1] - results[2 * i +2]
+            plt.plot(results[0], results[2*i + 1], lw=2, label=label, color=color_list[i%7])
+            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.3, color=color_list[i%7])
+
+            plt.legend()
+        
+        
+        response = HttpResponse(mimetype='image/png', content_type='image/png')
+        fig.savefig(response, format='png', transparent=True)
+        
+        return response
+    except:
+        raise

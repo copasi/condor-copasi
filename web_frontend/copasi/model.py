@@ -454,7 +454,7 @@ class CopasiModel:
         condor_jobs = []
                     
         for i in range(runs):
-            copasi_file = os.path.join(self.path, Template('auto_copasi_$index.cps').substitute(index=i))
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
             condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
@@ -475,39 +475,59 @@ class CopasiModel:
         """Collate the results from the stochastic simulation task"""
         import numpy
         
-        
-        
-        
-#        files = []
-#        for i in range(runs):
-#            try:
-#                file = open(os.path.join(self.path, str(i) + '_out.txt'), 'r')
-#                files.append(file)
-#            except:
-#                raise
-#        #Open the result file for writing
-#        result = open(os.path.join(self.path, 'result.txt'), 'w')
-#        #Copy the first output file to result
-#        first = files.pop()
-#        for line in first:
-#            result.write(line)
-#        first.close()
-#        result.close()
-#        
-#        for file in files:
-#            result = open(os.path.join(self.path, 'result.txt'), 'r')
-#            file_lines = file.readlines()
-#            result_lines = result.readlines()
-#            result.close()
-#            result = open(os.path.join(self.path, 'result.txt'), 'w')
-#            for i in range(len(file_lines)):
-#                if i==0:
-#                    ##Header line
-#                    result.write(result_lines[i])
-#                else:
-#                    file_line = file_lines[i]
-#                    result_line = result_lines[i]
-#                    
-#                    result.write(file_line + result_line)
-#            result.close()
-#            file.close()
+        if not os.path.exists(os.path.join(self.path, 'results.txt')):        
+            files = []
+            for i in range(runs):
+                try:
+                    filename = os.path.join(self.path, str(i) + '_out.txt')
+                    file = numpy.loadtxt(filename, delimiter='\t', skiprows=1, unpack=True)
+                    files.append(file)
+                except:
+                    raise
+                    
+            #Initialise the results array to be an empty array with the same structure as the first file
+            results = numpy.zeros((len(files[0])*2 -1, len(files[0][0])))
+            
+            #Go through each column in each file, and stack them, ignoring the first column
+            #Assume all files have same number of columns
+            columns = numpy.zeros((len(files[0]) - 1, len(files), len(files[0][0])))
+            
+            for col_index in range(len(files[0]))[1:]:
+                for i in range(len(files)):
+                    columns[col_index-1][i] = files[i][col_index]
+            
+            stacked_columns = numpy.zeros((len(files[0])-1, len(files[0][0]), len(files)))
+            for i in range(len(files[0]) -1):
+                stacked_columns[i] = numpy.column_stack(columns[i])
+                
+            #Copy over the time column
+            results[0] = files[0][0]
+            #Compute the mean of each row for each variable
+            for i in range(len(stacked_columns)):
+                for j in range(len(stacked_columns[i])):
+                    results[(2*i)+1][j] = numpy.mean(stacked_columns[i][j])
+                    results[(2*i)+2][j] = numpy.std(stacked_columns[i][j])
+
+            
+            #Parameter name line will be the first line in each output file
+            temp_file = open(os.path.join(self.path, '0_out.txt'), 'r')
+            header_line = temp_file.readlines()[0].rstrip('\n').split('\t')
+            temp_file.close()
+                       
+            #Create a new header line, by putting in stdev headings
+            new_header_line = header_line[0] + '\t'
+            for header in header_line[1:]:
+                new_header_line = new_header_line + header + ' mean\t' + header + ' stdev\t'
+            
+            new_header_line = new_header_line.rstrip() + '\n'
+            
+            file = open(os.path.join(self.path, 'results.txt'), 'w')
+            file.write(new_header_line)
+            for row in range(len(results[0])):
+                for column in range(len(results)):
+                    file.write(str(results[column][row]))
+                    if column != (len(results) - 1):
+                        file.write('\t')
+                file.write('\n')
+            file.close()
+            

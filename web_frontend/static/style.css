@@ -23,7 +23,7 @@ form {
 }
 
 #content a:link, #content a:visited {
-    color: #353535;
+    color: #2957a8;
     text-decoration: none;
     font-weight: bold;
 }
@@ -43,16 +43,21 @@ h1 {
 }
 
 ul.errorlist, div.error {
-    background: #f9dcdc;
+/*    background: #ffffff;*/
     padding: 0.2em;
     margin: 0.5em;
-    border: 1px solid gray;
+/*    border: 1px solid #573ca8;*/
+    color: #a52a2a
+}
+
+ul.job_details li{
+    padding: 5px;
 }
 
 div.review {
     background: #fcffbf;
     padding: 5px;
-    margin: 1em auto 1em auto;
+    margin: 2em auto 2em auto;
     border: 1px solid gray;
     max-width: 80%;
 }
@@ -60,6 +65,8 @@ div.review {
 div.review table{
     border-collapse: collapse;
     border: 1px solid gray;
+    margin-left: auto;
+    margin-right: auto;
 }
 div.review th{
     font-weight: bold;

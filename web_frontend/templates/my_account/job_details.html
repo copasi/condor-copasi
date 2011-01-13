@@ -6,10 +6,10 @@
 
 {% if job.status == 'C' %}
 This job has completed.
-<ul>
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Click here</a></b> to view the results</li>
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Click here</a></b> to download the results</li>
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Click here</a></b> to download the directory containing all output files</li>
+<ul class="job_details">
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">View</a></b> the results</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Download</a></b> the results</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
 </ul>
 {% endif %}
 
@@ -39,6 +39,5 @@ This job has completed.
         {% endif %}
     </table>
 </div>
-
 <p>Note: this information is updated every 2 minutes TODO:link to settings.
 {% endblock %}
