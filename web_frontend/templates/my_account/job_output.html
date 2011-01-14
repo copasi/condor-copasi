@@ -25,10 +25,17 @@
 </div>
 {% endif %}
 {% if job.job_type == 'SS' %}
-<div class = "review" style="background: white">
-<img src="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/plot.png" alt="Plot" />
+<div class = "plot">
+<img src="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/plot.png{{img_string}}" alt="Plot" />
 </div>
 
+<form action="" method="get">
+<input type="hidden" name="custom" value="true">
+<table class="formtable">
+{{form.as_table}}
+</table>
+<input type="submit" value="Update plot">
+</form>
 {% endif %}
 
 {% endblock %}

@@ -531,3 +531,27 @@ class CopasiModel:
                 file.write('\n')
             file.close()
             
+            
+    def get_ss_variables(self):
+        """Returns a list of the variable names for the SS task.
+        
+        At present, this can only be run after the results have been collated,
+        as it reads parameter names from the first line of the results file"""
+        #TODO: read parameter names directly from the CPS XML? Could aid in auto-report generation.
+        
+        #Regex for matching variable names.
+        variable_str = r'(?P<name>.+)\[.+\] mean$'
+        variable_re = re.compile(variable_str)
+        
+        headers = open(os.path.join(self.path, 'results.txt')).readlines()[0].rstrip('\n').split('\t')
+        
+        variables = []
+        for header in headers[1:]:
+            try:
+                match = variable_re.match(header)
+                name = match.group('name')
+                variables.append(name)
+            except:
+                pass
+                
+        return variables

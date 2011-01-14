@@ -59,6 +59,23 @@ class StochasticUploadModelForm(UploadModelForm):
             raise forms.ValidationError('There must be at least one run')
 
 
+class PlotUpdateForm(forms.Form):
+    """Form containing controls to update plots"""
+    
+    def __init__(self, *args, **kwargs):
+        variables = kwargs.pop('variable_choices', None)
+        variable_choices = []
+        for i in range(len(variables)):
+            variable_choices.append((i, variables[i]))
+
+        super(PlotUpdateForm, self).__init__(*args, **kwargs)
+        self.fields['variables'].choices = variable_choices
+        self.fields['variables'].initial = range(len(variable_choices))
+        
+    logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
+    
+    variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
+
 @login_required
 def newTask(request, type):
     """Upload page for new tasks"""
@@ -277,10 +294,39 @@ def jobOutput(request, job_name):
         
     try:
         model = CopasiModel(job.get_filename())
-        if job.job_type == 'SO':
-            results = model.get_so_results()
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    
+    if job.job_type == 'SO':
+        results = model.get_so_results()
+        
+    #If displaying a plot, check for GET options
+    if job.job_type == 'SS':
+        try:
+            variable_choices = model.get_ss_variables()
+        except:
+            return web_frontend_views.handle_error(request, 'Error Reading Results',['An error occured while trying to processs the job output'])
+        
+        #If the variables GET field hasn't been set, preset it to all variables
+        
+        try:
+            assert request.GET.get('custom') == 'true'
+            form=PlotUpdateForm(request.GET, variable_choices=variable_choices)
+        except:
+            form=PlotUpdateForm(variable_choices=variable_choices, initial={'variables' : range(len(variable_choices))})
+        
+        if form.is_valid():
+            variables = map(int,form.cleaned_data['variables'])
+            log = form.cleaned_data['logarithmic']
+        else:
+            variables=range(len(variable_choices))
+            log=False
+            
+        #construct the string to load the image file
+        img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
+        if log:
+            img_string += '&log=true'
+            
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
   
@@ -340,9 +386,14 @@ def ss_plot(request, job_name):
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
     try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    
+    try:
         assert job.status == 'C'
         results = np.loadtxt(os.path.join(job.get_path(), 'results.txt'), skiprows=1, delimiter='\t', unpack=True)
-        labels = open(os.path.join(job.get_path(), 'results.txt')).readlines()[0].rstrip('\n').split('\t')
+        variable_list = model.get_ss_variables()
         
     except:
         raise
@@ -352,36 +403,46 @@ def ss_plot(request, job_name):
         matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
         import matplotlib.pyplot as plt
 
+        #Look at the GET data to see what chart options have been set:
+        get_variables = request.GET.get('variables')
+        log = request.GET.get('log')
+        try:
+            variables = map(int, get_variables.split(','))
+            assert max(variables) < ((len(results)-1)/2)
+        except:
+            variables = range((len(results) - 1)/2)
+        
 
         fig = plt.figure()
         plt.title(job.name + ' (' + str(job.runs) + ' repeats)')
         plt.xlabel('Time')
         plt.ylabel('Particle number')
         
-        color_list = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black']
+        color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']
 #        import random
 #        random.shuffle(color_list)
         #Regex for extracting the variable name from the results file.
         label_str = r'(?P<name>.+)\[.+\] (mean|stdev)$'
         label_re = re.compile(label_str)
         
-        for i in range((len(results) -1) / 2):
+        
+        j=0 #used to keep cycle through colors in order
+        for i in variables:
             #Go through each result and plot mean and stdev against time
+            label = variable_list[i]
             
-            #Extract the variable name
-            try:
-                label=label_re.match(labels[2*i + 1]).group('name')
-            except:
-                label='Unknown variable ' + str(i)
             #Calculate stdev upper and lower bounds (mean +/- stdev)
             upper_bound = results[2*i + 1] + results[2*i+2]
             lower_bound = results[2*i + 1] - results[2 * i +2]
             #Plot the means
-            plt.plot(results[0], results[2*i + 1], lw=2, label=label, color=color_list[i%7])
+            plt.plot(results[0], results[2*i + 1], lw=2, label=label, color=color_list[j%7])
             #And shade the stdevs
-            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[i%7])
+            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[j%7])
             plt.legend()
-        
+            j+=1
+        #Set a logarithmic scale if requested
+        if log:
+            plt.yscale('log')
         
         response = HttpResponse(mimetype='image/png', content_type='image/png')
         fig.savefig(response, format='png', transparent=True, dpi=100)

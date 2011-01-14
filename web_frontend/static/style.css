@@ -54,6 +54,15 @@ ul.job_details li{
     padding: 5px;
 }
 
+div.plot {
+    background: white;
+    padding: 5px;
+    margin: 2em auto 2em auto;
+    border: 1px solid gray;
+    max-width: 80%;
+    min-width: 800px;
+}
+
 div.review {
     background: #fcffbf;
     padding: 5px;
