@@ -1,6 +1,17 @@
 {% extends "my_account/my_account.html" %}
 
-{% block breadcrumbs_l3 %} Job Details &gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+{% block breadcrumbs_l3 %}
+{% if job.status == 'C' %}
+<a href="http://{{request.get_host}}/my_account/jobs/completed">Completed Jobs</a> &gt;&gt;
+{% endif %}
+{% if job.status == 'N' or job.status == 'S' or job.status == 'W' %}
+<a href="http://{{request.get_host}}/my_account/jobs/completed">New and Submitted Jobs</a> &gt;&gt;
+{% endif %}
+{% if job.status == 'E' %}
+<a href="http://{{request.get_host}}/my_account/jobs/completed">Job Errors</a> &gt;&gt;
+{% endif %}
+
+<a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
 

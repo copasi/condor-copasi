@@ -241,7 +241,6 @@ def myAccountJobErrors(request):
     
 @login_required
 def jobDetails(request, job_name):
-    pageTitle = 'Job Details'
     submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
@@ -254,6 +253,7 @@ def jobDetails(request, job_name):
         model = CopasiModel(job.get_filename())
     except:
         return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    pageTitle = 'Job Details: ' + job.name
     running_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='R'))
     idle_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='I'))
     finished_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='F'))
@@ -348,12 +348,10 @@ def ss_plot(request, job_name):
         raise
         return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
     try:
+        import matplotlib
+        matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
         import matplotlib.pyplot as plt
 
-#        fig = plt.figure()
-#        
-#        for i in range(len(results)-1):
-#            plt.plot(results[0], results[i+1])
 
         fig = plt.figure()
         plt.title(job.name + ' (' + str(job.runs) + ' repeats)')
@@ -361,21 +359,32 @@ def ss_plot(request, job_name):
         plt.ylabel('Particle number')
         
         color_list = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black']
+#        import random
+#        random.shuffle(color_list)
+        #Regex for extracting the variable name from the results file.
         label_str = r'(?P<name>.+)\[.+\] (mean|stdev)$'
         label_re = re.compile(label_str)
         
-        for i in range(((len(results) -1) / 2)):
-            label=label_re.match(labels[2*i + 1]).group('name')
+        for i in range((len(results) -1) / 2):
+            #Go through each result and plot mean and stdev against time
+            
+            #Extract the variable name
+            try:
+                label=label_re.match(labels[2*i + 1]).group('name')
+            except:
+                label='Unknown variable ' + str(i)
+            #Calculate stdev upper and lower bounds (mean +/- stdev)
             upper_bound = results[2*i + 1] + results[2*i+2]
             lower_bound = results[2*i + 1] - results[2 * i +2]
+            #Plot the means
             plt.plot(results[0], results[2*i + 1], lw=2, label=label, color=color_list[i%7])
-            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.3, color=color_list[i%7])
-
+            #And shade the stdevs
+            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[i%7])
             plt.legend()
         
         
         response = HttpResponse(mimetype='image/png', content_type='image/png')
-        fig.savefig(response, format='png', transparent=True)
+        fig.savefig(response, format='png', transparent=True, dpi=100)
         
         return response
     except:

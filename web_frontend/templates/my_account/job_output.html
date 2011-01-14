@@ -1,7 +1,7 @@
-{% extends "my_account/my_account.html" %}
+{% extends "my_account/job_details.html" %}
 
 
-{% block breadcrumbs_l3 %} Job Details &gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a>&gt;&gt; <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Output</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+{% block breadcrumbs_l4 %} <a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">Output</a> &gt;&gt;{%block breadcrumbs_l5%}{%endblock%}{%endblock%}
 
 {% block body %}
 
