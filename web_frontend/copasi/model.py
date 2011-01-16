@@ -47,12 +47,6 @@ class CopasiModel:
         elif job_type == 'SS':
             if self.get_timecourse_method() == 'Deterministic (LSODA)':
                 return 'Time course task must have a valid Stochastic or Hybrid algorithm set'
-            try:
-                timeTask = self.__getTask('timeCourse')
-                timeReport = timeTask.find(xmlns + 'Report')
-                assert timeReport.attrib['reference'] != ''
-            except:
-                return 'Time course task must have a valid report selected'
             return True
             
         else:
@@ -90,6 +84,17 @@ class CopasiModel:
         
         for task in listOfTasks:
             task.attrib['scheduled'] = 'false'
+    
+    def __get_compartment_name(self, key):
+        """Go through the list of compartments and return the name of the compartment with a given key"""
+        model = self.model.find(xmlns + 'Model')
+        compartments = model.find(xmlns + 'ListOfCompartments')
+        for compartment in compartments:
+            if compartment.attrib['key'] == key:
+                name = compartment.attrib['name']
+                break
+        assert name != None
+        return name
     
     def get_name(self):
         """Returns the name of the model"""
@@ -183,17 +188,19 @@ class CopasiModel:
         """Create a report for a particular task, e.g. sensitivity optimization, with key report_key
         
         report_type: a string representing the job type, e.g. SO for sensitivity optimization"""
+
+        listOfReports = self.model.find(xmlns + 'ListOfReports')
+        
+        #Check a report with the current key doesn't already exist. If it does, delete it
+        foundReport = False
+        for report in listOfReports:
+            if report.attrib['key'] == report_key:
+                foundReport = report
+        if foundReport:
+            listOfReports.remove(foundReport)
+
         if report_type == 'SO':
-            listOfReports = self.model.find(xmlns + 'ListOfReports')
-            
-            #Check a report with the current key doesn't already exist. If it does, delete it
-            foundReport = False
-            for report in listOfReports:
-                if report.attrib['key'] == report_key:
-                    foundReport = report
-            if foundReport:
-                listOfReports.remove(foundReport)
-            
+
             newReport = etree.SubElement(listOfReports, xmlns + 'Report')
             newReport.set('key', report_key)
             newReport.set('name', report_key)
@@ -228,7 +235,33 @@ class CopasiModel:
 
             newReport_Body_Object7 = etree.SubElement(newReport_Body, xmlns + 'Object')
             newReport_Body_Object7.set('cn','CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Reference=Best Value')
+        
+        
+        elif report_type == 'SS':
+            #Use the following xml string as a template
+            report_string = Template(
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="auto_ss_report" taskType="timeCourse" separator="&#x09;" precision="6">
+      <Comment>
+        A table of time, variable species particle numbers, variable compartment volumes, and variable global quantity values.
+      </Comment>
+      <Table printTitle="1">
+        
+      </Table>
+    </Report>"""
+            ).substitute(report_key=report_key)
+            report = etree.XML(report_string)
+            model_name = self.get_name()
             
+            table = report.find(xmlns + 'Table')
+            time_object = etree.SubElement(table, xmlns + 'Object')
+            time_object.set('cn', 'Model=' + model_name + ',Reference=Time')
+            
+            for variable in self.get_variables():
+                row = etree.SubElement(table, xmlns + 'Object')
+                row.set('cn', variable) 
+            
+            listOfReports.append(report)
+        
         else:
             raise Exception('Unknown report type')
         
@@ -435,12 +468,25 @@ class CopasiModel:
         #And set it scheduled to run, and to update the model
         timeTask.attrib['scheduled'] = 'true'
         timeTask.attrib['updateModel'] = 'true'
-
+ 
+        ############
+        #Create a new report for the ss task
+        report_key = 'condor_copasi_stochastic_simulation_report'
+        self.__create_report('SS', report_key)
+        
+        #And set the new report for the ss task
         report = timeTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            optTask.insert(0,report)
+        
+        report.set('reference', report_key)
+        report.set('append', '1')
 
         #Generate a copasi file for each run
         for i in range(runs):
-            report.set('append', '1')
             report.set('target', str(i) + '_out.txt')
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
             self.model.write(filename)
@@ -531,27 +577,96 @@ class CopasiModel:
                 file.write('\n')
             file.close()
             
+#Depracated
+#    def get_ss_variables(self):
+#        """Returns a list of the variable names for the SS task.
+#        
+#        At present, this can only be run after the results have been collated,
+#        as it reads parameter names from the first line of the results file"""
+#        #TODO: read parameter names directly from the CPS XML? Could aid in auto-report generation.
+#        
+#        #Regex for matching variable names.
+#        variable_str = r'(?P<name>.+)\[.+\] mean$'
+#        variable_re = re.compile(variable_str)
+#        
+#        headers = open(os.path.join(self.path, 'results.txt')).readlines()[0].rstrip('\n').split('\t')
+#        
+#        variables = []
+#        for header in headers[1:]:
+#            try:
+#                match = variable_re.match(header)
+#                name = match.group('name')
+#                variables.append(name)
+#            except:
+#                pass
+#                
+#        return variables
+        
+        
+    def get_variables(self, pretty=False):
+        """Returns a list of all variable metabolites, compartments and global quantities in the model.
+        
+        By default, returns the internal string representation, e.g. CN=Root,Model=Kummer calcium model,Vector=Compartments[compartment],Vector=Metabolites[a],Reference=ParticleNumber. Running pretty=True will parse the string and return a user-friendly version of the names.
+        """
+        
+        output = []
+        #Get the model XML tree
+        model = self.model.find(xmlns + 'Model')
+        #Get list of metabolites
+        metabolites = model.find(xmlns + 'ListOfMetabolites')
+        
+        for metabolite in metabolites:
+            name = metabolite.attrib['name']
+            simulationType = metabolite.attrib['simulationType']
+            compartment_key = metabolite.attrib['compartment']
             
-    def get_ss_variables(self):
-        """Returns a list of the variable names for the SS task.
+            if simulationType != 'fixed':
+                if pretty:
+                    output.append(name + ' (Particle Number)')
+                else:
+                    #Format the metabolite string as: CN=Root,Model=modelname,Vector=Compartments[compartment],Vector=Metabolites[a],Reference=ParticleNumber
+                    compartment_name = self.__get_compartment_name(compartment_key)
+                    model_name = self.get_name()
+                    
+                    output_template = Template('CN=Root,Model=${model_name},Vector=Compartments[${compartment_name}],Vector=Metabolites[${name}],Reference=ParticleNumber')
+                    
+                    output_string = output_template.substitute(model_name=model_name, compartment_name=compartment_name, name=name)
+                    output.append(output_string)
+        #Next, get list of non-fixed compartments:
+        compartments = model.find(xmlns + 'ListOfCompartments')
+        for compartment in compartments:
+            name = compartment.attrib['name']
+            simulationType = compartment.attrib['simulationType']
+            
+            if simulationType != 'fixed':
+                if pretty:
+                    output.append(name + ' (' + model.attrib['volumeUnit'] + ')')
+                else:
+                    #format the compartment string as: "CN=Root,Model=Kummer calcium model,Vector=Compartments[compartment_2],Reference=Volume"
+                    model_name = self.get_name()
+                    output_template = Template('CN=Root,Model=${model_name},Vector=Compartments[${name}],Reference=Volume')
+                    output_string = output_template.substitute(model_name=model_name, name=name)
+                    output.append(output_string)
+                    
+        #Finally, get non-fixed global quantities
+        values = model.find(xmlns + 'ListOfModelValues')
+        #Hack - If no values have been set in the model, use the empty list to avoid a NoneType error
+        if values == None:
+            values = []
+        for value in values:
+            name = value.attrib['name']
+            simulationType = value.attrib['simulationType']
+            
+            if simulationType != 'fixed':
+                if pretty:
+                    output.append(name + ' (Value)')
+                else:
+                    #format as: CN=Root,Model=Kummer calcium model,Vector=Values[quantity_1],Reference=Value"
+                    model_name = self.get_name()
+                    output_template = Template('CN=Root,Model=${model_name},Vector=Values[${name}],Reference=Value')
+                    output_string = output_template.substitute(model_name=model_name, name=name)
+                    output.append(output_string)
+                    
+        return output
         
-        At present, this can only be run after the results have been collated,
-        as it reads parameter names from the first line of the results file"""
-        #TODO: read parameter names directly from the CPS XML? Could aid in auto-report generation.
         
-        #Regex for matching variable names.
-        variable_str = r'(?P<name>.+)\[.+\] mean$'
-        variable_re = re.compile(variable_str)
-        
-        headers = open(os.path.join(self.path, 'results.txt')).readlines()[0].rstrip('\n').split('\t')
-        
-        variables = []
-        for header in headers[1:]:
-            try:
-                match = variable_re.match(header)
-                name = match.group('name')
-                variables.append(name)
-            except:
-                pass
-                
-        return variables

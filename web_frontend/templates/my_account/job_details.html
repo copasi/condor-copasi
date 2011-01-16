@@ -16,12 +16,14 @@
 {% block body %}
 
 {% if job.status == 'C' %}
-This job has completed.
+<div class="complete">
+<b>This job has completed.</b>
 <ul class="job_details">
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">View</a></b> the results</li>
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Download</a></b> the results</li>
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
 </ul>
+</div>
 {% endif %}
 
 <div class="review">

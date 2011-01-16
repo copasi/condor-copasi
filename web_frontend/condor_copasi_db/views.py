@@ -70,10 +70,11 @@ class PlotUpdateForm(forms.Form):
 
         super(PlotUpdateForm, self).__init__(*args, **kwargs)
         self.fields['variables'].choices = variable_choices
-        self.fields['variables'].initial = range(len(variable_choices))
         
+    legend = forms.BooleanField(label='Show figure legend', required=False, initial=True)
+    stdev = forms.BooleanField(label='Show standard deviations', required=False, initial=True)
+    grid = forms.BooleanField(label='Show grid', required=False, initial=True)
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
-    
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
 
 @login_required
@@ -162,7 +163,7 @@ def taskConfirm(request, job_id):
                 request.session['message'] = 'Job succesfully sumbitted.'
 
                 return HttpResponseRedirect('/tasks/')
-            except:
+            except:                
                 job.delete()
                 return web_frontend_views.handle_error(request, 'An error occured preparing temporary files',['The job was not submitted to condor'])
                 
@@ -303,8 +304,9 @@ def jobOutput(request, job_name):
     #If displaying a plot, check for GET options
     if job.job_type == 'SS':
         try:
-            variable_choices = model.get_ss_variables()
+            variable_choices = model.get_variables(pretty=True)
         except:
+            raise
             return web_frontend_views.handle_error(request, 'Error Reading Results',['An error occured while trying to processs the job output'])
         
         #If the variables GET field hasn't been set, preset it to all variables
@@ -318,14 +320,26 @@ def jobOutput(request, job_name):
         if form.is_valid():
             variables = map(int,form.cleaned_data['variables'])
             log = form.cleaned_data['logarithmic']
+            stdev = form.cleaned_data['stdev']
+            legend = form.cleaned_data['legend']
+            grid = form.cleaned_data['grid']
         else:
             variables=range(len(variable_choices))
             log=False
+            stdev = True
+            legend=True
+            grid=True
             
         #construct the string to load the image file
         img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
         if log:
             img_string += '&log=true'
+        if stdev:
+            img_string += '&stdev=true'
+        if legend:
+            img_string += '&legend=true'
+        if grid:
+            img_string += '&grid=true'
             
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
@@ -393,7 +407,7 @@ def ss_plot(request, job_name):
     try:
         assert job.status == 'C'
         results = np.loadtxt(os.path.join(job.get_path(), 'results.txt'), skiprows=1, delimiter='\t', unpack=True)
-        variable_list = model.get_ss_variables()
+        variable_list = model.get_variables(pretty=True)
         
     except:
         raise
@@ -405,18 +419,20 @@ def ss_plot(request, job_name):
 
         #Look at the GET data to see what chart options have been set:
         get_variables = request.GET.get('variables')
-        log = request.GET.get('log')
+        log = request.GET.get('log', 'false')
+        stdev=request.GET.get('stdev', 'false')
+        legend = request.GET.get('legend', 'false')
+        grid = request.GET.get('grid', 'false')
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < ((len(results)-1)/2)
         except:
             variables = range((len(results) - 1)/2)
         
-
+        matplotlib.rc('font', size=8)
         fig = plt.figure()
         plt.title(job.name + ' (' + str(job.runs) + ' repeats)')
         plt.xlabel('Time')
-        plt.ylabel('Particle number')
         
         color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']
 #        import random
@@ -431,19 +447,23 @@ def ss_plot(request, job_name):
             #Go through each result and plot mean and stdev against time
             label = variable_list[i]
             
-            #Calculate stdev upper and lower bounds (mean +/- stdev)
-            upper_bound = results[2*i + 1] + results[2*i+2]
-            lower_bound = results[2*i + 1] - results[2 * i +2]
+
             #Plot the means
             plt.plot(results[0], results[2*i + 1], lw=2, label=label, color=color_list[j%7])
-            #And shade the stdevs
-            plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[j%7])
-            plt.legend()
+            
+            if stdev == 'true':
+                #Calculate stdev upper and lower bounds (mean +/- stdev) and shade the stdevs if requested
+                upper_bound = results[2*i + 1] + results[2*i+2]
+                lower_bound = results[2*i + 1] - results[2 * i +2]
+                plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[j%7])
             j+=1
         #Set a logarithmic scale if requested
-        if log:
+        if log != 'false':
             plt.yscale('log')
-        
+        if legend != 'false':
+            plt.legend(loc=0, )
+        if grid != 'false':
+            plt.grid(True)    
         response = HttpResponse(mimetype='image/png', content_type='image/png')
         fig.savefig(response, format='png', transparent=True, dpi=100)
         

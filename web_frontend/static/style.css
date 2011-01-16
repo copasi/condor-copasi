@@ -71,6 +71,13 @@ div.review {
     max-width: 80%;
 }
 
+div.complete {
+    background: #e3f7cd;
+    padding: 5px;
+    margin: 2em auto 2em auto;
+    border: 1px solid gray;
+}
+
 div.review table{
     border-collapse: collapse;
     border: 1px solid gray;
@@ -130,6 +137,7 @@ table.formtable th, table.formtable td{
 table.formtable th {
     font-size: 12px;
     font-weight: bold;
+    text-align:left;
 }
 #container {
     display: block;
