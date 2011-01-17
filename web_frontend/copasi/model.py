@@ -458,16 +458,20 @@ class CopasiModel:
 
 
 
-    def prepare_ss_task(self, runs):
-        """Prepares the temp copasi files needed to run n stochastic simulation runs""" 
+    def prepare_ss_task(self, runs, max_runs_per_job, no_of_jobs):
+        """Prepares the temp copasi files needed to run n stochastic simulation runs
+        
+        First sets up the scan task with a repeat, and sets each repeat to run i times. 
+        Uses a the chiunking algorithm to determine how many repeats to run for each scan.
+        """ 
         #First clear the task list, to ensure that no tasks are set to run
         self.__clear_tasks()
 
-        timeTask = self.__getTask('timeCourse')
+        scanTask = self.__getTask('scan')
         
-        #And set it scheduled to run, and to update the model
-        timeTask.attrib['scheduled'] = 'true'
-        timeTask.attrib['updateModel'] = 'true'
+        #And set it scheduled to run, and to not update the model
+        scanTask.attrib['scheduled'] = 'true'
+        scanTask.attrib['updateModel'] = 'false'
  
         ############
         #Create a new report for the ss task
@@ -475,31 +479,96 @@ class CopasiModel:
         self.__create_report('SS', report_key)
         
         #And set the new report for the ss task
-        report = timeTask.find(xmlns + 'Report')
+        report = scanTask.find(xmlns + 'Report')
     
         #If no report has yet been set, report == None. Therefore, create new report
         if report == None:
             report = etree.Element(xmlns + 'Report')
-            optTask.insert(0,report)
+            scanTask.insert(0,report)
         
         report.set('reference', report_key)
         report.set('append', '1')
 
-        #Generate a copasi file for each run
-        for i in range(runs):
+        #Set the XML for the problem task as follows:
+#        """<Parameter name="Subtask" type="unsignedInteger" value="1"/>
+#        <ParameterGroup name="ScanItems">
+#          <ParameterGroup name="ScanItem">
+#            <Parameter name="Number of steps" type="unsignedInteger" value="10"/>
+#            <Parameter name="Type" type="unsignedInteger" value="0"/>
+#            <Parameter name="Object" type="cn" value=""/>
+#          </ParameterGroup>
+#        </ParameterGroup>
+#        <Parameter name="Output in subtask" type="bool" value="1"/>
+#        <Parameter name="Adjust initial conditions" type="bool" value="0"/>"""
+
+        #Open the scan problem, and clear any subelements
+        scan_problem = scanTask.find(xmlns + 'Problem')
+        scan_problem.clear()
+        
+        #Add a subtask parameter (value 1 for timecourse)
+        subtask_parameter = etree.SubElement(scan_problem, xmlns + 'Parameter')
+        subtask_parameter.attrib['name'] = 'Subtask'
+        subtask_parameter.attrib['type'] = 'unsignedInteger'
+        subtask_parameter.attrib['value'] = '1'
+        
+        #Add a single ScanItem for the repeats
+        subtask_pg = etree.SubElement(scan_problem, xmlns + 'ParameterGroup')
+        subtask_pg.attrib['name'] = 'ScanItems'
+        subtask_pg_pg = etree.SubElement(subtask_pg, xmlns + 'ParameterGroup')
+        subtask_pg_pg.attrib['name'] = 'ScanItem'
+        
+        p1 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p1.attrib['name'] = 'Number of steps'
+        p1.attrib['type'] = 'unsignedInteger'
+        p1.attrib['value'] = '0'# Assign this later
+
+        
+        p2 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p2.attrib['name'] = 'Type'
+        p2.attrib['type'] = 'bool'
+        p2.attrib['value'] = '0'
+        
+        p3 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p3.attrib['name'] = 'Object'
+        p3.attrib['type'] = 'cn'
+        p3.attrib['value'] = ''
+        
+        p4 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p4.attrib['name'] = 'Output in subtask'
+        p4.attrib['type'] = 'bool'
+        p4.attrib['value'] = '1'
+        
+        p5 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p5.attrib['name'] = 'Adjust initial conditions'
+        p5.attrib['type'] = 'bool'
+        p5.attrib['value'] = '0'
+        
+
+        
+      
+        
+        runs_left=runs # Decrease this value as we generate the jobs
+        
+        for i in range(no_of_jobs):
+            #Calculate the number of runs per job. This will either be max_runs_per_job, or if this is the last job, runs_left
+            job_runs = min(max_runs_per_job, runs_left)
+            no_of_steps = str(job_runs)
+            p1.attrib['value'] = no_of_steps
+            runs_left -= job_runs
+            
             report.set('target', str(i) + '_out.txt')
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
             self.model.write(filename)
             
         return
             
-    def prepare_ss_condor_jobs(self, runs):
+    def prepare_ss_condor_jobs(self, jobs):
         """Prepare the neccessary .job files to submit to condor for the stochastic simulation task"""
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
         condor_jobs = []
                     
-        for i in range(runs):
+        for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
             condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
@@ -521,61 +590,96 @@ class CopasiModel:
         """Collate the results from the stochastic simulation task"""
         import numpy
         
-        if not os.path.exists(os.path.join(self.path, 'results.txt')):        
-            files = []
-            for i in range(runs):
+        #First, read through the various output files, and concatinate into a single file raw_results.txt
+        assert runs >0
+        #Copy the whole of the first file
+        output = open(os.path.join(self.path, 'raw_results.txt'), 'a')
+        
+        file0 = open(os.path.join(self.path, '0_out.txt'), 'r')
+        for line in file0:
+            output.write(line)
+        file0.close()       
+        output.flush()
+        #Now, copy over all but the first line of the other files
+        for i in range(runs)[1:]:
+
+            file = open(os.path.join(self.path, str(i) + '_out.txt'), 'r')
+            firstline = True
+            for line in file:
+                if not firstline:
+                    output.write(line)
+                firstline = False
+            file.close()
+            output.flush()
+        output.close()
+                
+     
+        #next, go through the file for all timepoints and store the results
+        #find out how many columns are in the file
+        file = open('raw_results.txt', 'r')
+        firstline = file.readline()
+        secondline = file.readline()
+
+        cols = len(secondline.split('\t'))
+        file.close()
+
+        #Create a new file called results.txt, and copy the header line over
+        file = open('raw_results.txt', 'r')
+        headerline = file.readline().split('\t')
+        file.close()
+        
+        #Create a new header line, by putting in stdev headings
+        new_header_line = header_line[0] + '\t'
+        for header in header_line[1:]:
+            new_header_line = new_header_line + header + ' (Mean)\t' + header + ' (STDev)\t'
+        
+        new_header_line = new_header_line.rstrip() + '\n'
+        
+        
+        output = open('results.txt', 'w')
+        output.write(new_header_line)
+        output.close()
+
+        import numpy
+        #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
+        lines = open('raw_results.txt', 'r').readlines()
+
+        for timepoint in range(timepoints):
+            #create a new array to hold each time point:
+            results = numpy.zeros((runs, cols))
+
+
+            iterator = 0
+            result_index = 0
+            for line in lines:
                 try:
-                    filename = os.path.join(self.path, str(i) + '_out.txt')
-                    file = numpy.loadtxt(filename, delimiter='\t', skiprows=1, unpack=True)
-                    files.append(file)
+                    if iterator % (timepoints+1) == timepoint + 1:
+                        result_line = map(float, line.split('\t'))
+                        results[result_index] = result_line
+                        result_index += 1
+                    iterator += 1
                 except:
+
                     raise
                     
-            #Initialise the results array to be an empty array with the same structure as the first file
-            results = numpy.zeros((len(files[0])*2 -1, len(files[0][0])))
-            
-            #Go through each column in each file, and stack them, ignoring the first column
-            #Assume all files have same number of columns
-            columns = numpy.zeros((len(files[0]) - 1, len(files), len(files[0][0])))
-            
-            for col_index in range(len(files[0]))[1:]:
-                for i in range(len(files)):
-                    columns[col_index-1][i] = files[i][col_index]
-            
-            stacked_columns = numpy.zeros((len(files[0])-1, len(files[0][0]), len(files)))
-            for i in range(len(files[0]) -1):
-                stacked_columns[i] = numpy.column_stack(columns[i])
-                
-            #Copy over the time column
-            results[0] = files[0][0]
-            #Compute the mean of each row for each variable
-            for i in range(len(stacked_columns)):
-                for j in range(len(stacked_columns[i])):
-                    results[(2*i)+1][j] = numpy.mean(stacked_columns[i][j])
-                    results[(2*i)+2][j] = numpy.std(stacked_columns[i][j])
+            results = numpy.transpose(results)
 
+            output_file = open('results.txt', 'a')
+
+            for col in range(len(results)):
+                if col == 0:
+                    output_file.write(str(results[0][0]))
+                else:
+                    output_file.write(str(numpy.average(results[col])))
+                    output_file.write('\t')
+                    output_file.write(str(numpy.std(results[col])))
+                if col != len(results)-1:
+                    output_file.write('\t')
+            output_file.write('\n')
+            output_file.close()
+        
             
-            #Parameter name line will be the first line in each output file
-            temp_file = open(os.path.join(self.path, '0_out.txt'), 'r')
-            header_line = temp_file.readlines()[0].rstrip('\n').split('\t')
-            temp_file.close()
-                       
-            #Create a new header line, by putting in stdev headings
-            new_header_line = header_line[0] + '\t'
-            for header in header_line[1:]:
-                new_header_line = new_header_line + header + ' mean\t' + header + ' stdev\t'
-            
-            new_header_line = new_header_line.rstrip() + '\n'
-            
-            file = open(os.path.join(self.path, 'results.txt'), 'w')
-            file.write(new_header_line)
-            for row in range(len(results[0])):
-                for column in range(len(results)):
-                    file.write(str(results[column][row]))
-                    if column != (len(results) - 1):
-                        file.write('\t')
-                file.write('\n')
-            file.close()
+        return
             
 #Depracated
 #    def get_ss_variables(self):

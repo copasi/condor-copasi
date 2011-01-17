@@ -153,7 +153,8 @@ def taskConfirm(request, job_id):
                 if job.job_type == 'SO':
                     model.prepare_so_task()
                 elif job.job_type == 'SS':
-                    model.prepare_ss_task(job.runs)
+                    pass
+                    #model.prepare_ss_task(job.runs)
 
                 #Mark the job as confirmed
                 job.status = 'N'
@@ -163,7 +164,8 @@ def taskConfirm(request, job_id):
                 request.session['message'] = 'Job succesfully sumbitted.'
 
                 return HttpResponseRedirect('/tasks/')
-            except:                
+            except:
+                raise
                 job.delete()
                 return web_frontend_views.handle_error(request, 'An error occured preparing temporary files',['The job was not submitted to condor'])
                 
@@ -465,7 +467,7 @@ def ss_plot(request, job_name):
         if grid != 'false':
             plt.grid(True)    
         response = HttpResponse(mimetype='image/png', content_type='image/png')
-        fig.savefig(response, format='png', transparent=True, dpi=100)
+        fig.savefig(response, format='png', transparent=True, dpi=120)
         
         return response
     except:

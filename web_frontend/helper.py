@@ -29,8 +29,14 @@ for job in new_jobs:
         if job.job_type == 'SO':
             condor_jobs = model.prepare_so_condor_jobs()
         elif job.job_type == 'SS':
-            model.prepare_ss_task(job.runs)
-            condor_jobs = model.prepare_ss_condor_jobs(job.runs)
+            #Do 1000 runs per job. TODO: 'chunk' in a more intelligent manner
+            max_runs_per_job = 1000
+            import math
+            #The number of jobs we need is the ceiling of the no of runs/max runs per job
+            no_of_jobs = int(math.ceil(float(job.runs) / float(max_runs_per_job)))
+
+            model.prepare_ss_task(job.runs, max_runs_per_job, no_of_jobs)
+            condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
         
         for cj in condor_jobs:
             try:
@@ -43,6 +49,7 @@ for job in new_jobs:
         job.status = 'S'
         job.save()
     except:
+        raise
         job.status = 'E'
         job.save()
 
@@ -132,7 +139,8 @@ for job in waiting:
             job.save()
             model.get_so_results(save=True)
         elif job.job_type == 'SS':
-            model.get_ss_output(job.runs)
+            condor_jobs = models.CondorJob.objects.filter(parent=job)
+            model.get_ss_output(len(condor_jobs))
             job.status='C'
             job.finish_time=datetime.datetime.today()
             job.save()
