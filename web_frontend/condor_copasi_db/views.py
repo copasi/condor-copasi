@@ -530,3 +530,4 @@ def ss_plot(request, job_name):
         return response
     except:
         raise
+

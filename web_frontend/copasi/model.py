@@ -647,10 +647,14 @@ class CopasiModel:
         import numpy
         #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
         lines = open(os.path.join(self.path, 'raw_results.txt'), 'r').readlines()
+        #Create a new data type to hold each row
+        #The first field will be a float, followed by unsigned integers for the rest of the columns
+        data_type = numpy.dtype([('time', numpy.float64)] + [('col ' + str(i), numpy.uint) for i in range(cols)[1:]])
 
         for timepoint in range(timepoints):
             #create a new array to hold each time point:
-            results = numpy.zeros((runs, cols))
+            
+            results = numpy.zeros((runs, cols-1), dtype=numpy.uint)
 
 
             iterator = 0
@@ -658,13 +662,21 @@ class CopasiModel:
             for line in lines:
                 try:
                     if iterator % (timepoints+1) == timepoint + 1:
-                        result_line = map(float, line.split('\t'))
-                        results[result_index] = result_line
+                        result_line = line.rstrip().split('\t')
+                        #time = (float(result_line[0]),)
+                        #cols = tuple(map(int, result_line[1:])
+                        #print time
+                        #print cols
+                        for i in range(len(result_line)-1):
+                            results[result_index][i] = result_line[i+1]
                         result_index += 1
                     iterator += 1
                 except:
                     print len(results)
+                    print timepoint
                     print result_index
+                    print result_line
+                    print results
                     raise
                     
             results = numpy.transpose(results)
@@ -673,7 +685,7 @@ class CopasiModel:
 
             for col in range(len(results)):
                 if col == 0:
-                    output_file.write(str(results[0][0]))
+                    output_file.write(str(lines[timepoint + 1].split('\t')[0]))
                 else:
                     output_file.write(str(numpy.average(results[col])))
                     output_file.write('\t')
