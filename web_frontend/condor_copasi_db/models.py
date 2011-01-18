@@ -22,7 +22,7 @@ class Job(models.Model):
         ('U', 'Unconfirmed'),
         ('N', 'New, waiting for Condor submission'),
         ('S', 'Submitted to Condor'),
-        ('W', 'Finished, waiting for validation'),
+        ('W', 'Finished, processing data'),
         ('C', 'Complete'),
         ('E', 'Error'),
     )
@@ -33,8 +33,9 @@ class Job(models.Model):
     #The time the job was submitted
     submission_time = models.DateTimeField()
     #The time the job was marked as finished
-    finish_time=models.DateTimeField(null=True)
-
+    finish_time=models.DateTimeField(null=True, blank=True)
+    #The time information about this job was last updated
+    last_update = models.DateTimeField()
     #The number of runs to do. Only required for some jobs
     runs = models.IntegerField(null=True, blank=True)
     
@@ -86,10 +87,10 @@ class CondorJob(models.Model):
     def __unicode__(self):
         return unicode(self.queue_id)
         
-        def delete(self, *args, **kwargs):
-            """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
-            if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
-                import subprocesses
-                p = subprocesses.Popen('condor_rm', job.queue_id)
-                p.comminucate()
-            super(Job, self).delete(*args, **kwargs)
+    def delete(self, *args, **kwargs):
+        """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
+        if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
+            import subprocesses
+            p = subprocesses.Popen('condor_rm', job.queue_id)
+            p.comminucate()
+        super(Job, self).delete(*args, **kwargs)

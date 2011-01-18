@@ -16,11 +16,31 @@
 {% block body %}
 
 {% if job.status == 'C' %}
-<div class="complete">
+<div class="job_complete">
+
 <b>This job has completed.</b>
 <ul class="job_details">
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">View</a></b> the results</li>
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Download</a></b> the results</li>
+    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
+</ul>
+</div>
+{% endif %}
+
+{% if job.status == 'E' %}
+<div class="job_error">
+
+<b>An error has occurred while processing this job</b>
+{%if total_condor_jobs > 0 %}
+<p>The logs show that at least one job was submitted to the Condor system. You may find it helpful to download the results directory, and examine the Condor log files (<b><tt>*.log</tt></b>), and Copasi output (<b><tt>*.out</tt></b>) and error (<b><tt>*.err</tt></b>) files to determine the cause of the failure.
+<p>You may also be able to recover any raw, unprocessed results.
+
+{% else %}
+
+<p>The logs show that no jobs were submitted to the Condor system. The most likely cause for this error is a malformed Copasi <b><tt>.cps</tt></b> file. Ensure that all the recommended guidelines have been followed while setting up the file, including using specified version of Copasi.
+{% endif %}
+
+<ul class="job_details">
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
 </ul>
 </div>
@@ -47,10 +67,25 @@
                                      <br>Held: <b>{{held_condor_jobs}}</b>
                                      <br>Finished: <b>{{finished_condor_jobs}}</b></td>
         <tr><th>Submission time:</th><td>{{job.submission_time}}</td></tr>
-        {% if job.status == 'C' %}
+        {% if job.finish_time != None %}
         <tr><th>Finish time:</th><td>{{job.finish_time}}</td></tr>
         {% endif %}
     </table>
 </div>
-<p>Note: this information is updated every 2 minutes TODO:link to settings.
+{% if job_removal_days > 0 and job.finish_time != None %}
+<div class="job_remove">
+<p><b>Job Removal</b></p>
+All jobs are stored on the system for <b>{{job_removal_days}} day{%if job_removal_days > 1 %}s{%endif%}</b>, after which they are automatically removed, along with any saved results.</p>
+<p>This job will be removed in <b>{{job_removal_date|timeuntil}} ({{job_removal_date}})</b>.</p>
+<p>Alternatively, you can remove the job now:</p>
+
+<form action="remove/" method="get">
+    <input type="submit" value="Remove">
+</form>
+
+</div>
+{% endif %}
+{% if job.status != 'C' %}
+<p>This information was last updated <b>{{job.last_update|timesince}}</b> ago. </p>
+{% endif %}
 {% endblock %}

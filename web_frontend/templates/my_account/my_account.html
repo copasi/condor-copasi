@@ -4,7 +4,7 @@
 
 {% block accountlist %}
 <ul>
-    <li><a href="http://{{request.get_host}}/my_account/jobs/running">New and Submitted Jobs <b>({{submitted_job_count}})</b></a></li>
+    <li><a href="http://{{request.get_host}}/my_account/jobs/running">Running Jobs <b>({{submitted_job_count}})</b></a></li>
     <li><a href="http://{{request.get_host}}/my_account/jobs/completed">Completed Jobs <b>({{completed_job_count}})</b></a></li>
     <li><a href="http://{{request.get_host}}/my_account/jobs/errors">Errors <b>({{error_count}})</b></a></li>
     <li>Account settings</li>

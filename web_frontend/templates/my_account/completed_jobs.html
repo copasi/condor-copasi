@@ -16,6 +16,7 @@
     <tr>
         <th>Job name</th>
         <th>Job type</th>
+        <th>Runs</th>
         <th>Number of condor jobs</th>
         <th>Finish time</th>
     </tr>
@@ -24,6 +25,7 @@
     <tr>
         <td><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a></td>
         <td>{{job.get_job_type_display}}</td>
+        <td>{% if job.runs != None %}{{job.runs}}{% endif %}</td>
         <td>{{condor_jobs|length}}</td>
         <td>{{job.finish_time}}</td>
     </tr>

@@ -106,7 +106,7 @@ def newTask(request, type):
                         runs=int(form.cleaned_data['runs'])
                     else:
                         runs = None
-                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs)
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today())
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
                     user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))
@@ -158,6 +158,7 @@ def taskConfirm(request, job_id):
 
                 #Mark the job as confirmed
                 job.status = 'N'
+                job.last_update = datetime.datetime.today()
                 job.save()
 
                 #Store a message stating that the job was successfully confirmed
@@ -205,21 +206,25 @@ def taskConfirm(request, job_id):
 @login_required
 def myAccount(request):
     pageTitle = 'My Account'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    if request.session.get('message', False):
+        message = request.session['message']
+        del request.session['message']
     return render_to_response('my_account/my_account.html', locals(), RequestContext(request))
     
     
 @login_required
 def myAccountRunningJobs(request):
-    pageTitle = 'Newly Submitted and Running Jobs'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    pageTitle = 'Running Jobs'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     
     new_jobs = models.Job.objects.filter(user=request.user, status = 'N')
     submitted_jobs= models.Job.objects.filter(user=request.user, status='S')
+    processing_jobs = models.Job.objects.filter(user=request.user, status='W')
     
     jobs=[]
     
@@ -229,14 +234,16 @@ def myAccountRunningJobs(request):
     for job in submitted_jobs:
         condor_jobs = models.CondorJob.objects.filter(parent=job)
         jobs.append((job, condor_jobs))
-        
+    
+    for job in processing_jobs:
+        jobs.append((job, []))    
     
     return render_to_response('my_account/running_jobs.html', locals(), RequestContext(request))
     
 @login_required
 def myAccountCompletedJobs(request):
     pageTitle = 'Completed Jobs'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     
@@ -253,15 +260,22 @@ def myAccountCompletedJobs(request):
 @login_required
 def myAccountJobErrors(request):
     pageTitle = 'Job Errors'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    
+    error_jobs = models.Job.objects.filter(user=request.user, status='E')
+    jobs = []
+    for job in error_jobs:
+        condor_jobs = models.CondorJob.objects.filter(parent=job)
+        jobs.append((job, condor_jobs))
+        
     return render_to_response('my_account/errors.html', locals(), RequestContext(request))
     
     
 @login_required
 def jobDetails(request, job_name):
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     try:
@@ -280,13 +294,57 @@ def jobDetails(request, job_name):
     held_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='H'))
     total_condor_jobs = running_condor_jobs + idle_condor_jobs + held_condor_jobs + finished_condor_jobs
     
+
+    job_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
+    if job.finish_time != None:
+        job_removal_date = job.finish_time + datetime.timedelta(days=job_removal_days)
+    
     return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
     
 @login_required
-def jobOutput(request, job_name):
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N'))
+def jobRemove(request, job_name):
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
-    error_count = len(models.Job.objects.filter(user=request.user, status='E'))    
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    pageTitle = 'Remove Job: ' + job.name
+    running_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='R'))
+    idle_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='I'))
+    finished_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='F'))
+    held_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='H'))
+    total_condor_jobs = running_condor_jobs + idle_condor_jobs + held_condor_jobs + finished_condor_jobs
+    
+
+    if request.method == 'POST':
+        if 'remove_job' in request.POST:
+            try:
+                job_name = job.name
+                job.delete()
+                request.session['message'] = 'Job ' + str(job_name) + ' removed.'
+                return HttpResponseRedirect('/my_account/')
+            except:
+                return web_frontend_views.handle_error(request, 'Error Removing Job',[])
+        else:
+            return HttpResponseRedirect('/my_account/jobs/details/' + str(job.name))
+        
+    return render_to_response('my_account/job_remove.html', locals(), RequestContext(request))
+    
+    
+@login_required
+def jobOutput(request, job_name):
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    job_remove_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
+    
     try:
         job = models.Job.objects.get(user=request.user, name=job_name)
     except:

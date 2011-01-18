@@ -31,6 +31,7 @@ urlpatterns = patterns('',
     (r'my_account/jobs/details/(?P<job_name>.+)/save/plot.png$', db.ss_plot),
     (r'my_account/jobs/details/(?P<job_name>.+)/save/$', db.jobResultDownload),
     (r'my_account/jobs/details/(?P<job_name>.+)/output/$', db.jobOutput),
+    (r'my_account/jobs/details/(?P<job_name>.+)/remove/$', db.jobRemove),
     (r'my_account/jobs/details/(?P<job_name>.+)/$', db.jobDetails),
 )
 

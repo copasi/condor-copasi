@@ -114,3 +114,6 @@ USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('
 
 COPASI_BINARY_DIR = '/home/ed/bin/condor_files/'
 COPASI_LOCAL_BINARY = os.path.join(COPASI_BINARY_DIR, 'CopasiSE.LINUX.X86_64')
+
+#The number of days completed jobs are stored for. To disable automatic job removal, set this to 0
+COMPLETED_JOB_REMOVAL_DAYS = 14

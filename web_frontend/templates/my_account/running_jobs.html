@@ -1,6 +1,6 @@
 {% extends "my_account/my_account.html" %}
 
-{% block breadcrumbs_l3 %} Running Jobs &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+{% block breadcrumbs_l3 %} <a href="http://{{request.get_host}}/my_account/jobs/running/">Running Jobs</a> &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
 
@@ -9,12 +9,13 @@ You currently have no jobs running on the system. Once jobs have finished runnin
 
 {% else %}
 
-<p>You currently have <b>{{completed_job_count}}</b> new and submitted job{%if completed_job_count > 1%}s{%endif%}. Click on a job to see more information.
+<p>You currently have <b>{{submitted_job_count}}</b> running job{%if submitted_job_count > 1%}s{%endif%}. Click on a job to see more information.
 <p>
 <table class="jobtable">
     <tr>
         <th>Job name</th>
         <th>Job type</th>
+        <th>Runs</th>
         <th>Number of condor jobs</th>
         <th>Start time</th>
     </tr>
@@ -23,6 +24,7 @@ You currently have no jobs running on the system. Once jobs have finished runnin
     <tr>
         <td><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a></td>
         <td>{{job.get_job_type_display}}</td>
+        <td>{% if job.runs != None %}{{job.runs}}{% endif %}</td>
         <td>{{condor_jobs|length}}</td>
         <td>{{job.submission_time}}</td>
     </tr>

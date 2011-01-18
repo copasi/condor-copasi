@@ -1,6 +1,7 @@
 #Script to run at set intervals to check on the status of condor jobs, submit them, and collate results if necessary
 from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel
+from web_frontend import settings
 import subprocess, os, re, datetime
 
 def condor_submit(condor_file):
@@ -47,10 +48,13 @@ for job in new_jobs:
                 print 'Error submitting to condor. Check the condor scheduler service is running.'#TODO: pass to log file
             
         job.status = 'S'
+        job.last_update=datetime.datetime.today()
         job.save()
     except:
         raise
         job.status = 'E'
+        job.last_update=datetime.datetime.today()
+        job.finish_time=datetime.datetime.today()
         job.save()
 
 
@@ -114,11 +118,17 @@ for job in submitted_jobs:
                 break
         if error:
             job.status='E'
+            job.finish_time=datetime.datetime.today()
+            job.last_update=datetime.datetime.today()
             job.save()
         elif not still_running:
             #Mark the job as finished, waiting for validation
             job.status='W'
+            job.last_update=datetime.datetime.today()
             #job.finish_time=datetime.datetime.today()
+            job.save()
+        else:
+            job.last_update=datetime.datetime.today()
             job.save()
     except:
         pass
@@ -136,16 +146,20 @@ for job in waiting:
             #Mark the job as complete
             job.status='C'
             job.finish_time=datetime.datetime.today()
+            job.last_update=datetime.datetime.today()
             job.save()
             model.get_so_results(save=True)
         elif job.job_type == 'SS':
             condor_jobs = models.CondorJob.objects.filter(parent=job)
-            model.get_ss_output(len(condor_jobs))
+            model.get_ss_output(len(condor_jobs), job.runs)
             job.status='C'
             job.finish_time=datetime.datetime.today()
+            job.last_update=datetime.datetime.today()
             job.save()
     except:
         job.status='E'
+        job.finish_time=datetime.datetime.today()
+        job.last_update=datetime.datetime.today()
         job.save()
         print 'Error processing job ' + str(job.name)
         raise
@@ -153,4 +167,9 @@ complete = models.Job.objects.filter(status='C')
 
 for job in complete:
     model = CopasiModel(job.get_filename())
-
+    
+    
+############
+#Go through completed jobs, and remove anything older than settings.COMPLETED_JOB_DAYS
+if settings.COMPLETED_JOB_REMOVAL_DAYS >0:
+    pass

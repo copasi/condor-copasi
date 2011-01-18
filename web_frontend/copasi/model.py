@@ -586,14 +586,14 @@ class CopasiModel:
 
         return condor_jobs
         
-    def get_ss_output(self, runs):
+    def get_ss_output(self, jobs, runs):
         """Collate the results from the stochastic simulation task"""
         import numpy
         
         #First, read through the various output files, and concatinate into a single file raw_results.txt
-        assert runs >0
+        assert jobs >0
         #Copy the whole of the first file
-        output = open(os.path.join(self.path, 'raw_results.txt'), 'a')
+        output = open(os.path.join(self.path, 'raw_results.txt'), 'w')
         
         file0 = open(os.path.join(self.path, '0_out.txt'), 'r')
         for line in file0:
@@ -601,7 +601,7 @@ class CopasiModel:
         file0.close()       
         output.flush()
         #Now, copy over all but the first line of the other files
-        for i in range(runs)[1:]:
+        for i in range(jobs)[1:]:
 
             file = open(os.path.join(self.path, str(i) + '_out.txt'), 'r')
             firstline = True
@@ -614,18 +614,22 @@ class CopasiModel:
         output.close()
                 
      
-        #next, go through the file for all timepoints and store the results
+        #next, go through the file and find out how many time points there are
+        timepoints = -1 #Start at -1 to ignore the header line
+        for line in open(os.path.join(self.path, 'raw_results.txt'), 'r'):
+            if line == '\n':
+                break
+            timepoints += 1
         #find out how many columns are in the file
-        file = open('raw_results.txt', 'r')
+        file = open(os.path.join(self.path, 'raw_results.txt'), 'r')
         firstline = file.readline()
         secondline = file.readline()
-
         cols = len(secondline.split('\t'))
         file.close()
 
         #Create a new file called results.txt, and copy the header line over
-        file = open('raw_results.txt', 'r')
-        headerline = file.readline().split('\t')
+        file = open(os.path.join(self.path, 'raw_results.txt'), 'r')
+        header_line = file.readline().rstrip().split('\t')
         file.close()
         
         #Create a new header line, by putting in stdev headings
@@ -636,13 +640,13 @@ class CopasiModel:
         new_header_line = new_header_line.rstrip() + '\n'
         
         
-        output = open('results.txt', 'w')
+        output = open(os.path.join(self.path, 'results.txt'), 'w')
         output.write(new_header_line)
         output.close()
 
         import numpy
         #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
-        lines = open('raw_results.txt', 'r').readlines()
+        lines = open(os.path.join(self.path, 'raw_results.txt'), 'r').readlines()
 
         for timepoint in range(timepoints):
             #create a new array to hold each time point:
@@ -659,12 +663,13 @@ class CopasiModel:
                         result_index += 1
                     iterator += 1
                 except:
-
+                    print len(results)
+                    print result_index
                     raise
                     
             results = numpy.transpose(results)
 
-            output_file = open('results.txt', 'a')
+            output_file = open(os.path.join(self.path, 'results.txt'), 'a')
 
             for col in range(len(results)):
                 if col == 0:
