@@ -496,7 +496,7 @@ def ss_plot(request, job_name):
         
         matplotlib.rc('font', size=8)
         fig = plt.figure()
-        plt.title(job.name + ' (' + str(job.runs) + ' repeats)')
+        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
         plt.xlabel('Time')
         
         color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']
@@ -520,7 +520,7 @@ def ss_plot(request, job_name):
                 #Calculate stdev upper and lower bounds (mean +/- stdev) and shade the stdevs if requested
                 upper_bound = results[2*i + 1] + results[2*i+2]
                 lower_bound = results[2*i + 1] - results[2 * i +2]
-                plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.4, color=color_list[j%7])
+                plt.fill_between(results[0], upper_bound, lower_bound, alpha=0.2, color=color_list[j%7])
             j+=1
         #Set a logarithmic scale if requested
         if log != 'false':
@@ -532,19 +532,19 @@ def ss_plot(request, job_name):
             
         if download_png:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
-            fig.savefig(response, format='png', transparent=True, dpi=120)
+            fig.savefig(response, format='png', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.png'
         elif download_svg:
             response = HttpResponse(mimetype='image/svg', content_type='image/svg')
-            fig.savefig(response, format='svg', transparent=True, dpi=120)
+            fig.savefig(response, format='svg', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
         elif download_eps:
             response = HttpResponse(mimetype='image/eps', content_type='image/eps')
-            fig.savefig(response, format='eps', transparent=True, dpi=120)
+            fig.savefig(response, format='eps', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
         else:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
-            fig.savefig(response, format='png', transparent=True, dpi=120)
+            fig.savefig(response, format='png', transparent=False, dpi=120)
         return response
     except:
         raise
