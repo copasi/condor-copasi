@@ -27,6 +27,13 @@
 {% if job.job_type == 'SS' %}
 <div class = "plot">
 <img src="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/plot.png{{img_string}}" alt="Plot" />
+<br>
+<form action="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/plot.png{{img_string}}" method="post">
+{% csrf_token %}
+<input type="submit" name="download_png" value="Download in .PNG Format">
+<input type="submit" name="download_svg" value="Download in .SVG Format">
+<input type="submit" name="download_eps" value="Download in .EPS Format">
+</form>
 </div>
 
 <form action="" method="get">

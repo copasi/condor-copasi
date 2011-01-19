@@ -483,6 +483,11 @@ def ss_plot(request, job_name):
         stdev=request.GET.get('stdev', 'false')
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
+        
+        #Check to see if we should return as an attachment in .png or .svg or .eps
+        download_png = 'download_png' in request.POST
+        download_svg = 'download_svg' in request.POST
+        download_eps = 'download_eps' in request.POST
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < ((len(results)-1)/2)
@@ -523,10 +528,23 @@ def ss_plot(request, job_name):
         if legend != 'false':
             plt.legend(loc=0, )
         if grid != 'false':
-            plt.grid(True)    
-        response = HttpResponse(mimetype='image/png', content_type='image/png')
-        fig.savefig(response, format='png', transparent=True, dpi=120)
-        
+            plt.grid(True)
+            
+        if download_png:    
+            response = HttpResponse(mimetype='image/png', content_type='image/png')
+            fig.savefig(response, format='png', transparent=True, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.png'
+        elif download_svg:
+            response = HttpResponse(mimetype='image/svg', content_type='image/svg')
+            fig.savefig(response, format='svg', transparent=True, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
+        elif download_eps:
+            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
+            fig.savefig(response, format='eps', transparent=True, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        else:    
+            response = HttpResponse(mimetype='image/png', content_type='image/png')
+            fig.savefig(response, format='png', transparent=True, dpi=120)
         return response
     except:
         raise

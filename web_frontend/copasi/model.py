@@ -683,13 +683,15 @@ class CopasiModel:
 
             output_file = open(os.path.join(self.path, 'results.txt'), 'a')
 
+            #Write the time point
+            output_file.write(str(lines[timepoint + 1].split('\t')[0]))
+            output_file.write('\t')
+            #And write the means and stdevs
             for col in range(len(results)):
-                if col == 0:
-                    output_file.write(str(lines[timepoint + 1].split('\t')[0]))
-                else:
-                    output_file.write(str(numpy.average(results[col])))
-                    output_file.write('\t')
-                    output_file.write(str(numpy.std(results[col])))
+                output_file.write(str(numpy.average(results[col])))
+                output_file.write('\t')
+                output_file.write(str(numpy.std(results[col])))
+                #don't put a tab at the end of the last column
                 if col != len(results)-1:
                     output_file.write('\t')
             output_file.write('\n')
