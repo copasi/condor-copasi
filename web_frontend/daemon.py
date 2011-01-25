@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+#Script by Sander Marechal, released into public domain
+#Taken from http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
+
 import sys, os, time, atexit
 from signal import SIGTERM 
 
@@ -10,9 +13,9 @@ class Daemon:
 	Usage: subclass the Daemon class and override the run() method
 	"""
 	def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
-#		self.stdin = stdin
-#		self.stdout = stdout
-#		self.stderr = stderr
+		self.stdin = stdin
+		self.stdout = stdout
+		self.stderr = stderr
 		self.pidfile = pidfile
 	
 	def daemonize(self):
