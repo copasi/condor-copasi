@@ -1,4 +1,4 @@
-import subprocess, os, re
+import subprocess, os, re, math
 from web_frontend import settings
 from lxml import etree
 from string import Template
@@ -48,6 +48,14 @@ class CopasiModel:
             if self.get_timecourse_method() == 'Deterministic (LSODA)':
                 return 'Time course task must have a valid Stochastic or Hybrid algorithm set'
             return True
+        
+        elif job_type == 'PS':
+            scanTask = self.__getTask('scan')
+            problem = scanTask.find(xmlns+'Problem')
+            scanItems = problem.find(xmlns + 'ParameterGroup')
+            if len(scanItems) == 0:
+                return 'At least one scan must have been set'
+            return True
             
         else:
             return True
@@ -58,11 +66,13 @@ class CopasiModel:
         p.communicate()
         
    
-    def __getTask(self,task_type):
+    def __getTask(self,task_type, model=None):
         """Get the XML tree representing a task with type: 'type'"""
+        if model == None:
+            model = self.model
         #Get the task list
         try:
-            listOfTasks = self.model.find(xmlns + 'ListOfTasks')
+            listOfTasks = model.find(xmlns + 'ListOfTasks')
             assert listOfTasks != None
         except:
             raise
@@ -183,6 +193,29 @@ class CopasiModel:
 
         return parameters
     
+    def get_ps_number(self):
+        """Returns the number of runs set up for the parameter scan task"""
+        scanTask = self.__getTask('scan')
+        problem = scanTask.find(xmlns+'Problem')
+        #scanItems contains a list of parameter groups, each of which represents a scan
+        scanItems = problem.find(xmlns + 'ParameterGroup')
+        #Now, go through each parameter group and get
+
+        
+        scan_number = 0
+        for parameterGroup in scanItems:
+#            return etree.tostring(scan)
+#            parameters = scan.find(xmlns + 'Parameter')
+            for parameter in parameterGroup:
+                if parameter.attrib['name'] == 'Number of steps':
+                    if scan_number == 0:
+                        scan_number += int(parameter.attrib['value'])
+                    else:
+                        scan_number *= int(parameter.attrib['value'])
+                    break
+        
+        return scan_number
+        
     
     def __create_report(self, report_type, report_key):
         """Create a report for a particular task, e.g. sensitivity optimization, with key report_key
@@ -647,9 +680,6 @@ class CopasiModel:
         import numpy
         #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
         lines = open(os.path.join(self.path, 'raw_results.txt'), 'r').readlines()
-        #Create a new data type to hold each row
-        #The first field will be a float, followed by unsigned integers for the rest of the columns
-        data_type = numpy.dtype([('time', numpy.float64)] + [('col ' + str(i), numpy.uint) for i in range(cols)[1:]])
 
         for timepoint in range(timepoints):
             #create a new array to hold each time point:
@@ -672,11 +702,6 @@ class CopasiModel:
                         result_index += 1
                     iterator += 1
                 except:
-                    print len(results)
-                    print timepoint
-                    print result_index
-                    print result_line
-                    print results
                     raise
                     
             results = numpy.transpose(results)
@@ -792,4 +817,109 @@ class CopasiModel:
                     
         return output
         
+    def prepare_ps_jobs(self):
+        """Prepare the parallel scan task"""
         
+        def get_range(min, max, steps, log):
+            """Get the range of parameters for a scan."""
+            if not log:
+                min = float(min)
+                max = float(max)
+                difference = max-min
+                step_size = difference/steps
+                output = [min + i*step_size for i in range(steps+1)]
+                return output
+            else:
+                from math import log10 as log
+                log_min = log(min)
+                log_max = log(max)
+                log_difference = log_max - log_min
+                step_size = log_difference/steps
+                output = [pow(10, log_min + i*step_size) for i in range(steps+1)]
+                return output
+                
+        
+        #First, read in the task
+        scanTask = self.__getTask('scan')
+        problem = scanTask.find(xmlns+'Problem')
+        scanItems = problem.find(xmlns + 'ParameterGroup')
+        
+        
+        scans = []
+        scan_params = []
+        for parameterGroup in scanItems:
+            scan_item = {}
+            for parameter in parameterGroup:
+                if parameter.attrib['name'] == 'Number of steps':
+                    steps = parameter.attrib['value']
+                    scan_item['steps'] = parameter
+                    scan_item['no_of_steps'] = int(parameter.attrib['value'])
+                if parameter.attrib['name'] == 'Type':
+                    type = parameter.attrib['value']
+                if parameter.attrib['name'] == 'Minimum':
+                    min = parameter.attrib['value']
+                    scan_item['min'] = parameter
+                if parameter.attrib['name'] == 'Maximum':
+                    max = parameter.attrib['value']
+                    scan_item['max'] = parameter
+                if parameter.attrib['name'] == 'log':
+                    log = parameter.attrib['value']
+            
+            if log == '1':
+                log = True
+            else:
+                log = False
+            
+            #Add to the list of scans all values the parameter may take
+            if type == '1':
+                scans.append(get_range(float(min), float(max), int(steps), log))
+            elif type == '0':
+                scans.append([None for i in range(steps)])
+            #And store the parameters to be manipulated later...
+            scan_params.append(scan_item)
+        
+        #Take the cartesian product of all scans to determine all possible combinations of parameters
+        import itertools
+        p = itertools.product(*scans)
+        #p is an iterable. For the time being expand fully. TODO: may be able to skip this to reduce memory footprint
+        product = [i for i in p]
+        
+        #Next, split into 'chunks'. At the moment, split into chunks of size of the last scan item.
+        #TODO: do this more intelligently. Note, chunk_size must be a multiple of, or an exact divisor of the number of steps in the last scan (check - is this correct??)
+        chunk_size = len(scans[-1])*2
+
+        
+        no_of_jobs = int(math.ceil(len(product)/float(chunk_size)))
+
+        #Prepare the jobs
+        for x in range(no_of_jobs):
+            scan_selection = product[(x*chunk_size):(x*chunk_size)+chunk_size] # Note, we can safely access ranges outside the length of the list, so there's no need to worry about the last job being smaller
+            print scan_selection
+            print '############'
+            #Go through the selection of parameters and find:
+            #The min value of each parameter
+            #The max value of each parameter
+            #The number of steps, i.e. the number of distinct values for each parameter in the selection
+            mins = list(scan_selection[0]) #Initialise to the first set of params in the selection. Store as a list while changing values
+            maxs = list(scan_selection[-1])
+            last_values = list(mins) #Used as a temporary store of the previous values
+            counts = [0 for k in mins] #Used to keep count of the number of different values we have
+            for parameters in scan_selection:
+                for i in range(len(parameters)):
+                    if parameters[i] < mins[i]:
+                        mins[i] = parameters[i]
+                    if parameters[i] > maxs[i]:
+                        maxs[i] = parameters[i]
+                    if parameters[i] > last_values[i]:
+                        last_values[i] = parameters[i]
+                        counts[i] += 1
+
+            for j in range(len(parameters)):
+                scan_params[j]['min'].attrib['value'] = str(mins[j])
+                scan_params[j]['max'].attrib['value'] = str(maxs[j])
+                scan_params[j]['steps'].attrib['value'] = str(counts[j])
+            #Write xml files...
+            
+            filename = os.path.join(self.path, 'auto_copasi_xml_' + str(x) + '.cps')
+            self.model.write(filename)
+

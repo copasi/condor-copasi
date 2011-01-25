@@ -38,7 +38,14 @@ for job in new_jobs:
 
             model.prepare_ss_task(job.runs, max_runs_per_job, no_of_jobs)
             condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
+            
+        #elif job.job_type == 'PS':
+        #   model.prepare_ps_jobs()
         
+        else:
+            condor_jobs = []
+            break
+           
         for cj in condor_jobs:
             try:
                 condor_job_id = condor_submit(cj['spec_file'])

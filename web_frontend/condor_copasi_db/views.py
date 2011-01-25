@@ -87,6 +87,20 @@ def newTask(request, type):
     elif type == 'SS':
         pageTitle = 'Stochastic Simulation'
         Form = StochasticUploadModelForm
+    elif type == 'PS':
+        pageTitle = 'Scan in Parallel'
+        Form = UploadModelForm
+    elif type == 'OR':
+        pageTitle = 'Optimization Repeat'
+        Form = StochasticUploadModelForm
+    elif type == 'PR':
+        pageTitle = 'Parameter Estimation Repeat'
+        #Will need new form
+        Form = StochasticUploadModelForm
+    elif type == 'OD':
+        pageTitle = 'Optimization Repeat with Different Algorithms'
+        #Will need mega new form
+        Form = StochasticUploadModelForm
     else:
         return web_frontend_views.handle_error(request, 'Unknown job type')    
     if request.method == 'POST':
@@ -123,7 +137,8 @@ def newTask(request, type):
                     handle_uploaded_file(model_file, destination)
                     return HttpResponseRedirect('/tasks/new/confirm/' + str(job.id))
             except:
-                    file_error = 'The submitted file is not a valid Copasi xml file'
+                raise
+                file_error = 'The submitted file is not a valid Copasi xml file'
                     
     else:
         form = Form()
@@ -180,14 +195,13 @@ def taskConfirm(request, job_id):
     job_filename = job.get_filename()
     
     model = CopasiModel(job_filename)  
-    if job.job_type == 'SO':  
+    if job.job_type == 'SO':
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Optimization algorithm', model.get_optimization_method()),
-            ('Sensitivities Object', model.get_sensitivities_object()),
-            
+            ('Sensitivities Object', model.get_sensitivities_object()),    
         )
         parameters =  model.get_optimization_parameters(friendly=True)
         return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
@@ -200,8 +214,15 @@ def taskConfirm(request, job_id):
             ('Time course algorithm', model.get_timecourse_method()),
             ('Number of runs', job.runs)
         )
-        return render_to_response('tasks/stochastic_simulation_confirm.html', locals(), RequestContext(request))
-    
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
+    elif job.job_type == 'PS':
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Total number of scans', model.get_ps_number())
+        )
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     
 @login_required
 def myAccount(request):

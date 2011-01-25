@@ -7,6 +7,10 @@ class Job(models.Model):
     JOB_TYPE_CHOICES = (
         ('SO', 'Sensitivity Optimization'),
         ('SS', 'Stochastic Simulation'),
+        ('PS', 'Scan in Parallel'),
+        ('OR', 'Optimization Repeat'),
+        ('PR', 'Parameter Estimation Repeat'),
+        ('OD', 'Optimizatino Repeat with Different Algorithms'),
     )
     #The type of job, e.g. sensitivity optimization
     job_type = models.CharField(max_length=2, choices=JOB_TYPE_CHOICES)
@@ -90,7 +94,7 @@ class CondorJob(models.Model):
     def delete(self, *args, **kwargs):
         """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
         if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
-            import subprocesses
-            p = subprocesses.Popen('condor_rm', job.queue_id)
+            import subprocess
+            p = subprocess.Popen('condor_rm', self.queue_id)
             p.comminucate()
         super(Job, self).delete(*args, **kwargs)
