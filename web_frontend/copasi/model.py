@@ -623,7 +623,7 @@ class CopasiModel:
         """Collate the results from the stochastic simulation task"""
         import numpy
         
-        #First, read through the various output files, and concatinate into a single file raw_results.txt
+        #First, read through the various output files, and concatenate into a single file raw_results.txt
         assert jobs >0
         #Copy the whole of the first file
         output = open(os.path.join(self.path, 'raw_results.txt'), 'w')
@@ -677,54 +677,86 @@ class CopasiModel:
         output.write(new_header_line)
         output.close()
 
-        import numpy
+#        import numpy
         #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
-        lines = open(os.path.join(self.path, 'raw_results.txt'), 'r').readlines()
 
-        for timepoint in range(timepoints):
+
+#        for timepoint in range(timepoints):
             #create a new array to hold each time point:
             
-            results = numpy.zeros((runs, cols-1), dtype=numpy.uint)
+#            results = numpy.zeros((runs, cols-1), dtype=numpy.uint)
 
 
-            iterator = 0
-            result_index = 0
-            for line in lines:
+#            iterator = 0
+#            result_index = 0
+#            for line in lines:
+#                try:
+#                    if iterator % (timepoints+1) == timepoint + 1:
+#                        result_line = line.rstrip().split('\t')
+#                        #time = (float(result_line[0]),)
+#                        #cols = tuple(map(int, result_line[1:])
+#                        #print time
+#                        #print cols
+#                        for i in range(len(result_line)-1):
+#                            results[result_index][i] = result_line[i+1]
+#                        result_index += 1
+#                    iterator += 1
+#                except:
+#                    raise
+#                    
+#            results = numpy.transpose(results)
+
+        #Create list of objects to store means and stdevs as we read through the file
+        from web_frontend.stats import IncrementalStats
+        
+        results = [[0] + [IncrementalStats() for c in range(cols-1)] for t in range(timepoints)]
+
+        line_count = 0
+        for line in open(os.path.join(self.path, 'raw_results.txt'), 'r'):
+            timepoint = line_count % (timepoints + 1)            
+            if timepoint == 0:
+                pass # The first line contains the headers, all other sets of timepoints are separated by a newline
+            else:
                 try:
-                    if iterator % (timepoints+1) == timepoint + 1:
-                        result_line = line.rstrip().split('\t')
-                        #time = (float(result_line[0]),)
-                        #cols = tuple(map(int, result_line[1:])
-                        #print time
-                        #print cols
-                        for i in range(len(result_line)-1):
-                            results[result_index][i] = result_line[i+1]
-                        result_index += 1
-                    iterator += 1
-                except:
-                    raise
+                    line_cols = line.rstrip().split('\t')
                     
-            results = numpy.transpose(results)
-
-            output_file = open(os.path.join(self.path, 'results.txt'), 'a')
-
+                    #Store the timepoint
+                    results[timepoint-1][0] = float(line_cols[0])
+                    
+                    #And add the particle numbers
+                    for i in range(cols)[1:]:
+                        result = int(line_cols[i])
+                        results[timepoint-1][i].add(result)
+                except:
+                    print i
+                    print line_cols
+                    print timepoint
+                    print results[0][0]
+                    print len(results)
+                    print results[timepoint-1]
+                    raise
+            line_count += 1
+        
+        
+        output_file = open(os.path.join(self.path, 'results.txt'), 'a')    
+        for i in range(len(results)):
             #Write the time point
-            output_file.write(str(lines[timepoint + 1].split('\t')[0]))
+            output_file.write(str(results[i][0]))
             output_file.write('\t')
             #And write the means and stdevs
-            for col in range(len(results)):
-                output_file.write(str(numpy.average(results[col])))
+            for col in range(len(results[i]))[1:]:
+                output_file.write(str(results[i][col].get_mean()))
                 output_file.write('\t')
-                output_file.write(str(numpy.std(results[col])))
+                output_file.write(str(results[i][col].get_stdev()))
                 #don't put a tab at the end of the last column
-                if col != len(results)-1:
+                if col != len(results[i])-1:
                     output_file.write('\t')
             output_file.write('\n')
-            output_file.close()
+            
+        output_file.close()
         
             
-        return
-            
+                   
 #Depracated
 #    def get_ss_variables(self):
 #        """Returns a list of the variable names for the SS task.
