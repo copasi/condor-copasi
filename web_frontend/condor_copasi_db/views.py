@@ -227,7 +227,7 @@ def taskConfirm(request, job_id):
 @login_required
 def myAccount(request):
     pageTitle = 'My Account'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     if request.session.get('message', False):
@@ -239,12 +239,12 @@ def myAccount(request):
 @login_required
 def myAccountRunningJobs(request):
     pageTitle = 'Running Jobs'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     
     new_jobs = models.Job.objects.filter(user=request.user, status = 'N')
-    submitted_jobs= models.Job.objects.filter(user=request.user, status='S')
+    submitted_jobs= models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='X')
     processing_jobs = models.Job.objects.filter(user=request.user, status='W')
     
     jobs=[]
@@ -264,7 +264,7 @@ def myAccountRunningJobs(request):
 @login_required
 def myAccountCompletedJobs(request):
     pageTitle = 'Completed Jobs'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     
@@ -281,7 +281,7 @@ def myAccountCompletedJobs(request):
 @login_required
 def myAccountJobErrors(request):
     pageTitle = 'Job Errors'
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     
@@ -296,7 +296,7 @@ def myAccountJobErrors(request):
     
 @login_required
 def jobDetails(request, job_name):
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     try:
@@ -324,7 +324,7 @@ def jobDetails(request, job_name):
     
 @login_required
 def jobRemove(request, job_name):
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     try:
@@ -361,7 +361,7 @@ def jobRemove(request, job_name):
     
 @login_required
 def jobOutput(request, job_name):
-    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W'))
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     job_remove_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS

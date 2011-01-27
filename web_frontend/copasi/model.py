@@ -619,10 +619,8 @@ class CopasiModel:
 
         return condor_jobs
         
-    def get_ss_output(self, jobs, runs):
+    def prepare_ss_process_job(self, jobs, runs):
         """Collate the results from the stochastic simulation task"""
-        import numpy
-        
         #First, read through the various output files, and concatenate into a single file raw_results.txt
         assert jobs >0
         #Copy the whole of the first file
@@ -647,141 +645,39 @@ class CopasiModel:
         output.close()
                 
      
-        #next, go through the file and find out how many time points there are
-        timepoints = -1 #Start at -1 to ignore the header line
-        for line in open(os.path.join(self.path, 'raw_results.txt'), 'r'):
-            if line == '\n':
-                break
-            timepoints += 1
-        #find out how many columns are in the file
-        file = open(os.path.join(self.path, 'raw_results.txt'), 'r')
-        firstline = file.readline()
-        secondline = file.readline()
-        cols = len(secondline.split('\t'))
-        file.close()
+        ############
+        #The rest of the processing is moved to condor, by the file ss_results_process.py
+        ############
+        
+        #Prepare the condor job file
+        script = os.path.join(settings.MEDIA_ROOT, 'ss_results_process.py')
+        raw_results = os.path.join(self.path, 'raw_results.txt')
 
-        #Create a new file called results.txt, and copy the header line over
-        file = open(os.path.join(self.path, 'raw_results.txt'), 'r')
-        header_line = file.readline().rstrip().split('\t')
-        file.close()
-        
-        #Create a new header line, by putting in stdev headings
-        new_header_line = header_line[0] + '\t'
-        for header in header_line[1:]:
-            new_header_line = new_header_line + header + ' (Mean)\t' + header + ' (STDev)\t'
-        
-        new_header_line = new_header_line.rstrip() + '\n'
-        
-        
-        output = open(os.path.join(self.path, 'results.txt'), 'w')
-        output.write(new_header_line)
-        output.close()
+        job_template = Template("""#Condor job
+executable = ${script}
+universe       = vanilla 
+arguments = 
+transfer_input_files = ${raw_results}
+log =  results.log  
+error = results.err
+output = results.out
+Requirements = ( OpSys == "LINUX" && HAS_PYTHON26 == True) 
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+queue\n""")
 
-#        import numpy
-        #Read results into memory. TODO: if this uses too much memory, we can read line by line in the inner for loop below, though this is  slightly slower.
-
-
-#        for timepoint in range(timepoints):
-            #create a new array to hold each time point:
-            
-#            results = numpy.zeros((runs, cols-1), dtype=numpy.uint)
-
-
-#            iterator = 0
-#            result_index = 0
-#            for line in lines:
-#                try:
-#                    if iterator % (timepoints+1) == timepoint + 1:
-#                        result_line = line.rstrip().split('\t')
-#                        #time = (float(result_line[0]),)
-#                        #cols = tuple(map(int, result_line[1:])
-#                        #print time
-#                        #print cols
-#                        for i in range(len(result_line)-1):
-#                            results[result_index][i] = result_line[i+1]
-#                        result_index += 1
-#                    iterator += 1
-#                except:
-#                    raise
-#                    
-#            results = numpy.transpose(results)
-
-        #Create list of objects to store means and stdevs as we read through the file
-        from web_frontend.stats import IncrementalStats
+        job_string = job_template.substitute(script=script, raw_results=raw_results)
+        job_file = open(os.path.join(self.path, 'results.job'), 'w')
+        job_file.write(job_string)
+        job_file.close()
         
-        results = [[0] + [IncrementalStats() for c in range(cols-1)] for t in range(timepoints)]
-
-        line_count = 0
-        for line in open(os.path.join(self.path, 'raw_results.txt'), 'r'):
-            timepoint = line_count % (timepoints + 1)            
-            if timepoint == 0:
-                pass # The first line contains the headers, all other sets of timepoints are separated by a newline
-            else:
-                try:
-                    line_cols = line.rstrip().split('\t')
-                    
-                    #Store the timepoint
-                    results[timepoint-1][0] = float(line_cols[0])
-                    
-                    #And add the particle numbers
-                    for i in range(cols)[1:]:
-                        result = int(line_cols[i])
-                        results[timepoint-1][i].add(result)
-                except:
-                    print i
-                    print line_cols
-                    print timepoint
-                    print results[0][0]
-                    print len(results)
-                    print results[timepoint-1]
-                    raise
-            line_count += 1
-        
-        
-        output_file = open(os.path.join(self.path, 'results.txt'), 'a')    
-        for i in range(len(results)):
-            #Write the time point
-            output_file.write(str(results[i][0]))
-            output_file.write('\t')
-            #And write the means and stdevs
-            for col in range(len(results[i]))[1:]:
-                output_file.write(str(results[i][col].get_mean()))
-                output_file.write('\t')
-                output_file.write(str(results[i][col].get_stdev()))
-                #don't put a tab at the end of the last column
-                if col != len(results[i])-1:
-                    output_file.write('\t')
-            output_file.write('\n')
-            
-        output_file.close()
-        
-            
-                   
-#Depracated
-#    def get_ss_variables(self):
-#        """Returns a list of the variable names for the SS task.
-#        
-#        At present, this can only be run after the results have been collated,
-#        as it reads parameter names from the first line of the results file"""
-#        #TODO: read parameter names directly from the CPS XML? Could aid in auto-report generation.
-#        
-#        #Regex for matching variable names.
-#        variable_str = r'(?P<name>.+)\[.+\] mean$'
-#        variable_re = re.compile(variable_str)
-#        
-#        headers = open(os.path.join(self.path, 'results.txt')).readlines()[0].rstrip('\n').split('\t')
-#        
-#        variables = []
-#        for header in headers[1:]:
-#            try:
-#                match = variable_re.match(header)
-#                name = match.group('name')
-#                variables.append(name)
-#            except:
-#                pass
-#                
-#        return variables
-        
+        return {
+            'spec_file': os.path.join(self.path, 'results.job'),
+            'std_output_file': os.path.join(self.path, 'results.out'),
+            'std_error_file': os.path.join(self.path, 'results.err'),
+            'log_file': os.path.join(self.path, 'results.log'),
+            'job_output': os.path.join(self.path, 'results.txt'),
+        }
         
     def get_variables(self, pretty=False):
         """Returns a list of all variable metabolites, compartments and global quantities in the model.

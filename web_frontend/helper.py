@@ -43,8 +43,7 @@ for job in new_jobs:
         #   model.prepare_ps_jobs()
         
         else:
-            condor_jobs = []
-            break
+            continue
            
         for cj in condor_jobs:
             try:
@@ -109,7 +108,7 @@ except:
 
 #Go through each of the model.Jobs with status 'S' (submitted), and look at each of its child CondorJobs. If all have finished, mark the Job as 'F' (finished). If any CondorJobs have been held ('H'), mark the Job as Error ('E')
 
-submitted_jobs = models.Job.objects.filter(status='S')
+submitted_jobs = models.Job.objects.filter(status='S') | models.Job.objects.filter(status='X')
 
 for job in submitted_jobs:
     try:
@@ -129,8 +128,13 @@ for job in submitted_jobs:
             job.last_update=datetime.datetime.today()
             job.save()
         elif not still_running:
-            #Mark the job as finished, waiting for validation
-            job.status='W'
+            if job.status == 'X':
+                #If the second stage of condor processing has finished, mark the job as complete
+                job.status='C'
+                job.finish_time=datetime.datetime.today()
+            else:
+                #Otherwise mark it as waiting for local processing
+                job.status = 'W'
             job.last_update=datetime.datetime.today()
             #job.finish_time=datetime.datetime.today()
             job.save()
@@ -143,7 +147,7 @@ for job in submitted_jobs:
 
 #Collate the results
 
-#Get the list of jobs marked as finished, waiting for validation
+#Get the list of jobs marked as finished, waiting for processing
 waiting = models.Job.objects.filter(status='W')
 for job in waiting:
     try:
@@ -158,9 +162,12 @@ for job in waiting:
             model.get_so_results(save=True)
         elif job.job_type == 'SS':
             condor_jobs = models.CondorJob.objects.filter(parent=job)
-            model.get_ss_output(len(condor_jobs), job.runs)
-            job.status='C'
-            job.finish_time=datetime.datetime.today()
+            cj = model.prepare_ss_process_job(len(condor_jobs), job.runs)
+            condor_job_id = condor_submit(cj['spec_file'])
+            condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
+            condor_job.save()
+            job.status='X' # Set the job status as processing on condor
+
             job.last_update=datetime.datetime.today()
             job.save()
     except:
@@ -170,6 +177,8 @@ for job in waiting:
         job.save()
         print 'Error processing job ' + str(job.name)
         raise
+        
+        
 complete = models.Job.objects.filter(status='C')
 
 for job in complete:

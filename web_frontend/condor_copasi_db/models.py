@@ -26,7 +26,8 @@ class Job(models.Model):
         ('U', 'Unconfirmed'),
         ('N', 'New, waiting for Condor submission'),
         ('S', 'Submitted to Condor'),
-        ('W', 'Finished, processing data'),
+        ('W', 'Finished, processing data locally'),
+        ('X', 'Finished, processing data on condor'),
         ('C', 'Complete'),
         ('E', 'Error'),
     )
