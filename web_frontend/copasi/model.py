@@ -60,10 +60,11 @@ class CopasiModel:
         else:
             return True
         
-    def __copasiExecute(self, filename, tempdir, timeout=None):
+    def __copasiExecute(self, filename, tempdir, timeout=-1):
         """Private function to run Copasi locally in a temporary folder."""
-        p = subprocess.Popen([self.binary, '--nologo',  '--home', tempdir, filename], stdout=subprocess.PIPE, cwd=tempdir)
-        p.communicate()
+        import process
+        returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, filename], cwd=tempdir, timeout=timeout)
+        return returncode, stdout, stderr
         
    
     def __getTask(self,task_type, model=None):
@@ -849,6 +850,7 @@ queue\n""")
             if run_time > 10:
                 break
         #Calculate the mean
-        print sum(run_times)/len(run_times)
-            
-
+        mean = sum(run_times)/len(run_times)
+        print mean
+        
+        
