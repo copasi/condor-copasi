@@ -59,6 +59,9 @@ class StochasticUploadModelForm(UploadModelForm):
             raise forms.ValidationError('There must be at least one run')
 
 
+class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
+    parameter_estimation_data = forms.FileField()
+
 class PlotUpdateForm(forms.Form):
     """Form containing controls to update plots"""
     
@@ -96,7 +99,7 @@ def newTask(request, type):
     elif type == 'PR':
         pageTitle = 'Parameter Estimation Repeat'
         #Will need new form
-        Form = StochasticUploadModelForm
+        Form = ParameterEstimationUploadModelForm
     elif type == 'OD':
         pageTitle = 'Optimization Repeat with Different Algorithms'
         #Will need mega new form
@@ -108,6 +111,7 @@ def newTask(request, type):
         if form.is_valid():
             #file can be accessed by request.FILES['file']
             model_file = request.FILES['model_file']
+            
             #Confirm model is valid by running a number of tests on it, e.g. valid xml, correct tasks set up properly etc.
             try:
                 temp_file_path = model_file.temporary_file_path()
@@ -116,7 +120,7 @@ def newTask(request, type):
                     file_error = m.is_valid(type)
                 else:
                     #Otherwise add a new job as unconfirmed
-                    if type == 'SS':
+                    if type == 'SS' or type == 'OR' or type=='PR':
                         runs=int(form.cleaned_data['runs'])
                     else:
                         runs = None
@@ -135,6 +139,12 @@ def newTask(request, type):
                     #And set the new model filename as follows:
                     destination=os.path.join(job_dir, model_file.name)
                     handle_uploaded_file(model_file, destination)
+                    
+                    #If this is a parameter estimation job, handle the parameter estimation data
+                    if type == 'PR':
+                        data_file = request.FILES['parameter_estimation_data']
+                        data_destination = os.path.join(job_dir, 'parameter_estimation_data.txt')
+                        handle_uploaded_file(data_file, data_destination)
                     return HttpResponseRedirect('/tasks/new/confirm/' + str(job.id))
             except:
                 raise
@@ -221,6 +231,24 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Total number of scans', model.get_ps_number())
+        )
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
+        
+    elif job.job_type == 'OR':
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Number of runs', job.runs),
+        )
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
+        
+    elif job.job_type == 'OR':
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Number of runs', job.runs),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     

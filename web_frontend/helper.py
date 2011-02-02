@@ -42,6 +42,10 @@ for job in new_jobs:
         elif job.job_type == 'PS':
             no_of_jobs = model.prepare_ps_jobs()
             condor_jobs = model.prepare_ps_condor_jobs(no_of_jobs)
+            
+        elif job.job_type == 'OR':
+            no_of_jobs = model.prepare_or_jobs(job.runs)
+            condor_jobs = model.prepare_or_condor_jobs(no_of_jobs)
                     
         else:
             continue
@@ -180,6 +184,14 @@ for job in waiting:
             condor_jobs = models.CondorJob.objects.filter(parent=job)
             no_of_jobs = len(condor_jobs)
             model.process_ps_results(no_of_jobs)
+            job.status = 'C'
+            job.last_update = datetime.datetime.today()
+            job.finish_time = datetime.datetime.today()
+            job.save()
+        elif job.job_type == 'OR':
+            condor_jobs = models.CondorJob.objects.filter(parent=job)
+            no_of_jobs = len(condor_jobs)
+            #TODO: Do we need to collate any output files?
             job.status = 'C'
             job.last_update = datetime.datetime.today()
             job.finish_time = datetime.datetime.today()
