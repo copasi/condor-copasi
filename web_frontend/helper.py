@@ -40,9 +40,9 @@ for job in new_jobs:
             condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
             
         elif job.job_type == 'PS':
-            model.prepare_ps_jobs()
-            continue
-        
+            no_of_jobs = model.prepare_ps_jobs()
+            condor_jobs = model.prepare_ps_condor_jobs(no_of_jobs)
+                    
         else:
             continue
            
@@ -107,7 +107,7 @@ except:
     print 'Error processing condor_q output. Ensure the condor scheduler service is running'#TODO:pass to log
 ############
 
-#Go through each of the model.Jobs with status 'S' (submitted) or 'X'(processing data on condor), and look at each of its child CondorJobs. If all have finished, mark the Job as 'F' (finished). If any CondorJobs have been held ('H'), mark the Job as Error ('E')
+#Go through each of the model.Jobs with status 'S' (submitted) or 'X'(processing data on condor), and look at each of its child CondorJobs. If all have finished, mark the Job as 'W' (finished, waiting for processing). If any CondorJobs have been held ('H'), mark the Job as Error ('E')
 
 submitted_jobs = models.Job.objects.filter(status='S') | models.Job.objects.filter(status='X')
 
@@ -174,6 +174,15 @@ for job in waiting:
             job.status='X' # Set the job status as processing on condor
 
             job.last_update=datetime.datetime.today()
+            job.save()
+            
+        elif job.job_type == 'PS':
+            condor_jobs = models.CondorJob.objects.filter(parent=job)
+            no_of_jobs = len(condor_jobs)
+            model.process_ps_results(no_of_jobs)
+            job.status = 'C'
+            job.last_update = datetime.datetime.today()
+            job.finish_time = datetime.datetime.today()
             job.save()
     except:
         job.status='E'

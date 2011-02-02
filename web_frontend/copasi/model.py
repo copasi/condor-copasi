@@ -55,6 +55,22 @@ class CopasiModel:
             scanItems = problem.find(xmlns + 'ParameterGroup')
             if len(scanItems) == 0:
                 return 'At least one scan must have been set'
+            #Extract some details about the scan task
+            firstScan = scanItems[0]
+            for parameter in firstScan:
+                if parameter.attrib['name'] == 'Type':
+                    scan_type = parameter
+                if parameter.attrib['name'] == 'Number of steps':
+                    no_of_steps = parameter
+            #Check that the first scan item is either a scan or a repeat
+            if not (scan_type.attrib['value'] == '1' or scan_type.attrib['value'] == '0'):
+                return 'The first item in the scan task must be either a Parameter Scan or a repeat'
+            #Check that, if the first scan item is a parameter scan, there is at least 1 interval
+            if scan_type.attrib['value'] == '1' and int(no_of_steps.attrib['value']) < 1:
+                return 'The first-level Parameter Scan must have at least one interval. If only one repeat is required, consider replacing the Parameter Scan with a Repeat'
+            report = scanTask.find(xmlns + 'Report')
+            if report == None or report.attrib['reference'] == '':
+                return 'A report must be set for the scan task'
             return True
             
         else:
@@ -767,22 +783,22 @@ queue\n""")
         Because of a limitation with the Copasi scan task -- that there must be at least two parameters for each scan, i.e. min and max, we set the requirement that the first scan must have at least one interval (corresponding to two parameter values), and that when splitting, each new scan must also have a minimum of at least one interval.
         """
         
-        def get_range(min, max, steps, log):
+        def get_range(min, max, intervals, log):
             """Get the range of parameters for a scan."""
             if not log:
                 min = float(min)
                 max = float(max)
                 difference = max-min
-                step_size = difference/steps
-                output = [min + i*step_size for i in range(steps+1)]
+                step_size = difference/intervals
+                output = [min + i*step_size for i in range(intervals+1)]
                 return output
             else:
                 from math import log10 as log
                 log_min = log(min)
                 log_max = log(max)
                 log_difference = log_max - log_min
-                step_size = log_difference/steps
-                output = [pow(10, log_min + i*step_size) for i in range(steps+1)]
+                step_size = log_difference/intervals
+                output = [pow(10, log_min + i*step_size) for i in range(intervals+1)]
                 return output
                 
         
@@ -793,13 +809,18 @@ queue\n""")
         problem = scanTask.find(xmlns+'Problem')
         scanTasks = problem.find(xmlns + 'ParameterGroup')
         
+        #Find the report for the scan task and store as a variable the node containing it's output
+        report = scanTask.find(xmlns+'Report')
+        assert report != None
+        
+        
         #Get the first scan in the list
         firstScan = scanTasks[0]
         
         parameters = {} #Dict to store the parameters that we're interested in reading/changing
         for parameter in firstScan:
             if parameter.attrib['name'] == 'Number of steps':
-                parameters['no_steps'] = parameter
+                parameters['no_of_steps'] = parameter
             if parameter.attrib['name'] == 'Type':
                 parameters['type'] = parameter
             if parameter.attrib['name'] == 'Maximum':
@@ -810,15 +831,17 @@ queue\n""")
                 parameters['log'] = parameter
                     
         #Read the values of these parameters before we go about changing them
-        no_steps = int(parameters['no_steps'].attrib['value'])
+        no_of_steps = int(parameters['no_of_steps'].attrib['value'])
+        assert no_of_steps > 0
         task_type = int(parameters['type'].attrib['value'])
         if task_type == 1:
-            max = float(parameters['max'].attrib['value'])
-            min = float(parameters['min'].attrib['value'])
+            max_value = float(parameters['max'].attrib['value'])
+            min_value = float(parameters['min'].attrib['value'])
             if parameters['log'].attrib['value'] == '0':
                 log = False
             else:
                 log = True
+            no_of_steps += 1 #Parameter scans actually consider no of intervals, which is one less than the number of steps, or actual parameter values. We will work with the number of discrete parameter values, and will decrement this value when saving new files
         
         ############
         #Benchmarking
@@ -827,14 +850,14 @@ queue\n""")
         import tempfile
         #Set the number of steps as 1, and write a temp XML file
         
-        #Do this 10 times, and take the average
+        #Do this 5 times, and take the average
         
         run_times = []
-        for i in range(10):
+        for i in range(5):
             temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
             tempdir, rel_filename = os.path.split(temp_filename)
 
-            parameters['no_steps'].attrib['value'] = '1'
+            parameters['no_of_steps'].attrib['value'] = '1'
             
             self.model.write(temp_filename)
             
@@ -846,11 +869,135 @@ queue\n""")
             run_times.append(run_time)
             
             os.remove(temp_filename)
-        
+            #If running for >10 seconds, assume this is a good enough measure, and don't take any more averages to save time
             if run_time > 10:
                 break
         #Calculate the mean
-        mean = sum(run_times)/len(run_times)
-        print mean
+        time_per_step = sum(run_times)/len(run_times)
+        
+        #If this was a scan task, not a repeat, then we'll have actually run two steps, not one. Adjust the time accordingly
+        if task_type == 1:
+            time_per_step = time_per_step/2
+        
+        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+        #time_per_job = no_of_steps * time_per_step => no_of_steps = time_per_job/time_per_step
+        
+        time_per_job = settings.IDEAL_JOB_TIME * 60
+        
+        #Calculate the number of steps for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+        no_of_steps_per_job = min(int(round(float(time_per_job) / time_per_step)), no_of_steps)
+
+
+        #Because of a limitation of Copasi, each parameter must have at least one interval, or two steps per job - corresponding to the max and min parameters
+        #Force this limitation:
+        if task_type == 1:
+            if no_of_steps_per_job < 2:
+                no_of_steps_per_job = 2
+        
+        no_of_jobs = int(math.ceil(float(no_of_steps) / no_of_steps_per_job))
+        
+        print 'Benchmarking complete'
+        print '%s steps in total' %no_of_steps
+        print 'Estimated time per step: %s' % time_per_step
+        print 'No of steps per job: %s' % no_of_steps_per_job
+        
+        ##############
+        #Job preparation
+        ##############
+        
+        #First, deal with the easy case -- where the top-level item is a repeat.
+
+        if task_type == 0:
+            step_count = 0
+            for i in range(no_of_jobs):
+                if no_of_steps_per_job + step_count > no_of_steps:
+                    steps = no_of_steps - step_count
+                else:
+                    steps = no_of_steps_per_job
+                step_count += steps
+                
+                if steps > 0:
+                    parameters['no_of_steps'].attrib['value'] = str(steps)
+                    report.attrib['target'] = str(i) + '_out.txt'
+                    filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
+                    self.model.write(filename)
+                
+            
         
         
+        #Then, deal with the case where we actually scan a parameter
+        #Example: parameter range = [1,2,3,4,5,6,7,8,9,10] - min 1, max 10, 9 intervals => 10 steps
+        #Split into 3 jobs of ideal length 3, min length 2
+        #We want [1,2,3],[4,5,6],[7,8,9,10]
+        elif task_type == 1:
+            scan_range = get_range(min_value, max_value, no_of_steps-1, log)
+            job_scans = []
+            for i in range(no_of_jobs):
+                #Go through the complete list of parameters, and split into jobs of size no_of_steps_per_job
+                job_scans.append(scan_range[i*no_of_steps_per_job:(i+1)*no_of_steps_per_job]) #No need to worry about the final index being outside the list range - python doesn't mind
+            
+            #If the last job is only of length 1, merge it with the previous job
+            assert no_of_jobs == len(job_scans)
+            if len(job_scans[no_of_jobs-1]) ==1:
+                job_scans[no_of_jobs-2] = job_scans[no_of_jobs-2] + job_scans[no_of_jobs-1]
+                del job_scans[no_of_jobs-1]
+                no_of_jobs -= 1
+            
+            #Write the Copasi XML files
+            for i in range(no_of_jobs):
+                job_scan_range = job_scans[i]
+                job_min_value = job_scan_range[0]
+                job_max_value = job_scan_range[-1]
+                job_no_of_intervals = len(job_scan_range)-1
+                
+                parameters['min'].attrib['value'] = str(job_min_value)
+                parameters['max'].attrib['value'] = str(job_max_value)
+                parameters['no_of_steps'].attrib['value'] = str(job_no_of_intervals)
+                
+                #Set the report output
+                report.attrib['target'] = str(i) + '_out.txt'
+                
+                filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
+                self.model.write(filename)
+        return no_of_jobs
+        
+    def prepare_ps_condor_jobs(self, jobs):
+        """Prepare the condor jobs for the parallel scan task"""
+                ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+                    
+        for i in range(jobs):
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+            condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+
+        return condor_jobs
+        
+    def process_ps_results(self, jobs):
+        output_file = open(os.path.join(self.path, 'results.txt'), 'w')
+        
+        #Copy the contents of the first file to results.txt
+        for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
+            output_file.write(line)
+            
+        #And for all other files, copy everything but the last line
+        for i in range(jobs)[1:]:
+            firstLine = True
+            for line in open(os.path.join(self.path, str(i) + '_out.txt'), 'r'):
+                if not firstLine:
+                    output_file.write(line)
+                firstLine = False
+                
+        output_file.close()

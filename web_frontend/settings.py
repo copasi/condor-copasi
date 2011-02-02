@@ -120,3 +120,9 @@ COMPLETED_JOB_REMOVAL_DAYS = 14
 
 #The minimim time between condor_q polls in minutes. If too small can cause condor pool to become overwhelmed!
 MIN_CONDOR_Q_POLL_TIME = 2
+
+#The ideal time, in minutes, to aim for when splitting tasks up.
+#   Too small, and the overhead of submitting jobs becomes an issue.
+#   Too large, and the benefits of parralelisation are lost.
+#   Larger still, and the jobs risk being pre-empted by condor.
+IDEAL_JOB_TIME = 0.10
