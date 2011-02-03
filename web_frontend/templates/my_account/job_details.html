@@ -58,6 +58,8 @@
         {% endif %}
         {% if job.job_type == 'SS' %}
         <br><b><em>Time course method:</em></b> {{model.get_timecourse_method}}
+        {% endif %}
+        {% if job.job_type == 'SS' or job.job_type == 'OR' %}
         <br><b><em>Repeats:</em></b> {{job.runs}}
         {% endif %}
         </td></tr>

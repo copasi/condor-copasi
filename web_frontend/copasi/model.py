@@ -7,11 +7,11 @@ raw_condor_job_string = """#Condor job
 executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
 universe       = vanilla 
 arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
-transfer_input_files = ${copasiFile}
+transfer_input_files = ${copasiFile}${otherFiles}
 log =  ${copasiFile}.log  
 error = ${copasiFile}.err
 output = ${copasiFile}.out
-Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "turing.mib.man.ac.uk") && (Machine != "e-cskc38c04.eps.manchester.ac.uk")
+Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "e-cskc38c04.eps.manchester.ac.uk") && (machine != "localhost.localdomain")
 #Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
@@ -451,7 +451,7 @@ class CopasiModel:
         for i in range(len(self.get_optimization_parameters())):
             for max in ('min', 'max'):
                 copasi_file = Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max)
-                condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+                condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
                 condor_job_filename = os.path.join(self.path, Template('auto_condor_${max}_$index.job').substitute(index=i, max=max))
                 condor_file = open(condor_job_filename, 'w')
                 condor_file.write(condor_job_string)
@@ -634,7 +634,7 @@ class CopasiModel:
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -970,7 +970,7 @@ queue\n""")
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -1102,13 +1102,13 @@ queue\n""")
         repeat_count = 0
         for i in range(no_of_jobs):
             if repeats_per_job + repeat_count > repeats:
-                no_of_repeats = repeats = repeat_count
+                no_of_repeats = repeats - repeat_count
             else:
                 no_of_repeats = repeats_per_job
             repeat_count += no_of_repeats
             
             #Set the number of repeats for the scan task
-            p1.attrib['value'] = str(repeat_count)
+            p1.attrib['value'] = str(no_of_repeats)
             
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) +'.cps')
             self.model.write(filename)
@@ -1123,7 +1123,175 @@ queue\n""")
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file)
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+
+        return condor_jobs
+        
+    def prepare_pr_jobs(self, repeats):
+        """Prepare jobs for the parameter estimation repeat task"""
+        
+        
+        #Benchmarking.
+        #As per usual, first calculate how long a single parameter scan will take
+        
+        self.__clear_tasks()
+        fitTask = self.__getTask('parameterFitting')
+        
+        fitTask.attrib['scheduled'] = 'true'
+        fitTask.attrib['updateModel'] = 'false'
+        
+        #Set the fitTask to use the data file 'parameter_estimation_data'
+        
+        
+        
+        import tempfile
+
+        tempdir = tempfile.mkdtemp()
+#        temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
+#        tempdir, rel_filename = os.path.split(temp_filename)
+        
+        temp_filename = os.path.join(tempdir, 'auto_copasi_temp.cps')
+
+        
+        #Copy the data file(s) over to the temp dir
+        import shutil
+        for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'),'r'):
+            data_file = data_file_line.rstrip('\n')
+            shutil.copy(os.path.join(self.path, data_file), os.path.join(tempdir, data_file))
+        
+        #Write a temp XML file
+        self.model.write(temp_filename)
+        
+        #Note the start time
+        start_time = time.time()
+        self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+        finish_time = time.time()
+        time_per_step = finish_time - start_time
+        
+        #Remove the temp directory tree
+        shutil.rmtree(tempdir)
+
+        
+        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+        #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+        
+        time_per_job = settings.IDEAL_JOB_TIME * 60
+        
+        #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+        repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
+        
+        no_of_jobs = int(math.ceil(float(repeats) / repeats_per_job))
+        
+        
+        ############
+        #Job preparation
+        ############
+        self.__clear_tasks()
+        #Get the scan task
+        scanTask = self.__getTask('scan')
+        scanTask.attrib['scheduled'] = 'true'
+        
+        
+        
+        #Prepare the scan task
+        
+        #Open the scan problem, and clear any subelements
+        scan_problem = scanTask.find(xmlns + 'Problem')
+        scan_problem.clear()
+        
+        #Add a subtask parameter (value 5 for parameter estimation)
+        subtask_parameter = etree.SubElement(scan_problem, xmlns + 'Parameter')
+        subtask_parameter.attrib['name'] = 'Subtask'
+        subtask_parameter.attrib['type'] = 'unsignedInteger'
+        subtask_parameter.attrib['value'] = '5'
+        
+        #Add a single ScanItem for the repeats
+        subtask_pg = etree.SubElement(scan_problem, xmlns + 'ParameterGroup')
+        subtask_pg.attrib['name'] = 'ScanItems'
+        subtask_pg_pg = etree.SubElement(subtask_pg, xmlns + 'ParameterGroup')
+        subtask_pg_pg.attrib['name'] = 'ScanItem'
+        
+        p1 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p1.attrib['name'] = 'Number of steps'
+        p1.attrib['type'] = 'unsignedInteger'
+        p1.attrib['value'] = '0'# Assign this later
+
+        
+        p2 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p2.attrib['name'] = 'Type'
+        p2.attrib['type'] = 'unsignedInteger'
+        p2.attrib['value'] = '0'
+        
+        p3 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p3.attrib['name'] = 'Object'
+        p3.attrib['type'] = 'cn'
+        p3.attrib['value'] = ''
+        
+        p4 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p4.attrib['name'] = 'Output in subtask'
+        p4.attrib['type'] = 'bool'
+        p4.attrib['value'] = '1'
+        
+        p5 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p5.attrib['name'] = 'Adjust initial conditions'
+        p5.attrib['type'] = 'bool'
+        p5.attrib['value'] = '0'
+        
+        
+        ############
+        #Prepare the Copasi files
+        ############
+        
+        repeat_count = 0
+        for i in range(no_of_jobs):
+            if repeats_per_job + repeat_count > repeats:
+                no_of_repeats = repeats - repeat_count
+            else:
+                no_of_repeats = repeats_per_job
+            repeat_count += no_of_repeats
+            
+            #Set the number of repeats for the scan task
+            p1.attrib['value'] = str(no_of_repeats)
+            
+            filename = os.path.join(self.path, 'auto_copasi_' + str(i) +'.cps')
+            self.model.write(filename)
+        
+        
+        return no_of_jobs
+        
+        
+    def prepare_pr_condor_jobs(self, jobs):
+        """Prepare the condor jobs for the parallel scan task"""
+        ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+        
+        #Build up a string containing a comma-seperated list of data files
+        files_string = ','
+        for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'), 'r'):
+            data_file = data_file_line.rstrip('\n')
+            files_string += data_file + ','
+        
+
+        files_string = files_string.rstrip(',')
+
+        
+        for i in range(jobs):
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
+            #In addition to the copasi file, also transmit the data files. These are listed in files_string
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string)            
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)

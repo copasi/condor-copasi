@@ -60,7 +60,7 @@ class StochasticUploadModelForm(UploadModelForm):
 
 
 class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
-    parameter_estimation_data = forms.FileField()
+    parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
 
 class PlotUpdateForm(forms.Form):
     """Form containing controls to update plots"""
@@ -139,12 +139,32 @@ def newTask(request, type):
                     #And set the new model filename as follows:
                     destination=os.path.join(job_dir, model_file.name)
                     handle_uploaded_file(model_file, destination)
-                    
                     #If this is a parameter estimation job, handle the parameter estimation data
                     if type == 'PR':
                         data_file = request.FILES['parameter_estimation_data']
-                        data_destination = os.path.join(job_dir, 'parameter_estimation_data.txt')
+                        filename = data_file.name
+                        data_destination = os.path.join(job_dir, filename)
                         handle_uploaded_file(data_file, data_destination)
+                        
+                        #Next, attempt to extract the file
+                        #If this fails, assume the file is an ASCII data file, not a zip file
+                        import zipfile
+                        try:
+                            z = zipfile.ZipFile(data_destination)
+                            #Write the name of each file in the zipfile to data_files_list.txt
+                            data_files_list = open(os.path.join(job_dir, 'data_files_list.txt'), 'w')
+                            for name in  z.namelist():
+                                data_files_list.write(name + '\n')
+                            data_files_list.close()
+                            
+                            z.extractall(job_dir)
+                        except zipfile.BadZipfile:
+                            #Assume instead that, if not a zip file, the file must be a data file, so leave it be.
+                            #Write the name of the data file to data_files_list
+                            data_files_list=open(os.path.join(job_dir, 'data_files_list.txt'), 'w')
+                            data_files_list.write(filename + '\n')
+                            data_files_list.close()
+                            
                     return HttpResponseRedirect('/tasks/new/confirm/' + str(job.id))
             except:
                 raise
@@ -243,12 +263,12 @@ def taskConfirm(request, job_id):
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
-    elif job.job_type == 'OR':
+    elif job.job_type == 'PR':
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
-            ('Number of runs', job.runs),
+            ('Number of Repeats', job.runs),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     
