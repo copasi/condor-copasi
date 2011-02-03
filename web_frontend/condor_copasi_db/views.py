@@ -58,10 +58,100 @@ class StochasticUploadModelForm(UploadModelForm):
         except AssertionError:
             raise forms.ValidationError('There must be at least one run')
 
-
+#Form for the parameter estimation task. Adds one more file field
 class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
     parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
 
+#Forms for the optimization repeat w/different algorithms task
+class CurrentSolutionStatisticsForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    
+    
+class GeneticAlgorithmForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
+    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    
+class GeneticAlgorithmSRForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
+    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
+    
+class HookeAndJeevesForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=50, min_value=1)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
+    rho = forms.FloatField(label='Rho', initial=0.2, min_value=0, max_value=1)
+    
+class LevenbergMarquardtForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
+    
+class EvolutionaryProgrammingForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
+    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    
+class RandomSearchForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    no_of_iterations = forms.IntegerField(label='Number of Iterations', initial=100000, min_value=1)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    
+class NelderMeadForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
+    scale = forms.FloatField(label='Scale', initial=10, min_value=0)
+    
+class ParticleSwarmForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=2000, min_value=1)
+    swarm_size = forms.IntegerField(label='Swarm Size', initial=50, min_value=1)
+    std_deviation = forms.FloatField(label='Std. Deviation', initial=1e-6, min_value=0)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    
+class PraxisForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
+    
+class TruncatedNewtonForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    
+    
+class SimulatedAnnealingForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    start_temperature = forms.FloatField(label='Start Temperature', initial=1, min_value=0)
+    cooling_factor = forms.FloatField(label='Cooling Factor', initial=0.85, min_value=0)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    
+    
+class EvolutionStrategyForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
+    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
+    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
+    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
+    pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
+    
+class SteepestDescentForm(forms.Form):
+    enabled = forms.BooleanField(label='Enabled', required=False)
+    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=100, min_value=1)
+    tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
+    
+    
+#form to update the stochastic simulation plots
 class PlotUpdateForm(forms.Form):
     """Form containing controls to update plots"""
     
@@ -103,12 +193,114 @@ def newTask(request, type):
     elif type == 'OD':
         pageTitle = 'Optimization Repeat with Different Algorithms'
         #Will need mega new form
-        Form = StochasticUploadModelForm
+        Form = UploadModelForm
+        
+        #Load the forms for the various different optimization algorithms
+        algorithms = []
+        #Store each algorithm as a dict, containing the form, prefix and algorithm name
+        algorithms.append({
+            'form': CurrentSolutionStatisticsForm,
+            'prefix': 'current_solution_statistics',
+            'name': 'Current Solution Statistics',
+            'form_instance': None,
+        })
+        
+        algorithms.append({
+            'form': GeneticAlgorithmForm,
+            'prefix': 'genetic_algorithm',
+            'name': 'Genetic Algorithm',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': GeneticAlgorithmSRForm,
+            'prefix': 'genetic_algorithm_sr',
+            'name': 'Genetic Algorithm SR',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': HookeAndJeevesForm,
+            'prefix': 'hooke_and_jeeves',
+            'name': 'Hooke & Jeeves',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': LevenbergMarquardtForm,
+            'prefix': 'levenberg_marquardt',
+            'name': 'Levenberg-Marquardt',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': EvolutionaryProgrammingForm,
+            'prefix': 'evolutionary_programming',
+            'name': 'Evolutionary Programming',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': RandomSearchForm,
+            'prefix': 'random_search',
+            'name': 'Random Search',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': NelderMeadForm,
+            'prefix': 'nelder_mead',
+            'name': 'Nelder-Mead',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': ParticleSwarmForm,
+            'prefix': 'particle_swarm',
+            'name': 'Particle Swarm',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': PraxisForm,
+            'prefix': 'praxis',
+            'name': 'Praxis',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': TruncatedNewtonForm,
+            'prefix': 'truncated_newton',
+            'name': 'Truncated Newton',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': SimulatedAnnealingForm,
+            'prefix': 'simulated_annealing',
+            'name': 'Simulated Annealing',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': EvolutionStrategyForm,
+            'prefix': 'evolution_strategy',
+            'name': 'Evolution Strategy',
+            'form_instance': None,
+        })
+        algorithms.append({
+            'form': SteepestDescentForm,
+            'prefix': 'steepest_descent',
+            'name': 'Steepest Descent',
+            'form_instance': None,
+        })
     else:
         return web_frontend_views.handle_error(request, 'Unknown job type')    
     if request.method == 'POST':
         form = Form(request.POST, request.FILES, request=request)
-        if form.is_valid():
+        
+        if type == 'OD':
+            #Load instances of all forms
+            for algorithm in algorithms:
+                algorithm['form_instance'] = algorithm['form'](request.POST, request.FILES, prefix=algorithm['prefix'])
+                
+            all_forms_valid = True
+            for algorithm in algorithms:
+                if not algorithm['form_instance'].is_valid():
+                    all_form_valid = False
+        else:
+            all_forms_valid = True
+            
+        if form.is_valid() and all_forms_valid:
             #file can be accessed by request.FILES['file']
             model_file = request.FILES['model_file']
             
@@ -173,6 +365,11 @@ def newTask(request, type):
     else:
         form = Form()
         file_error = False
+        
+        if type == 'OD':
+            #Initialize form instances for each algorithm
+            for algorithm in algorithms:
+                algorithm['form_instance'] = algorithm['form'](prefix=algorithm['prefix'])
         
     return render_to_response('tasks/new_task.html', locals(), RequestContext(request))
     

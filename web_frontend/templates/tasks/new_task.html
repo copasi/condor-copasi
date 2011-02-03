@@ -32,6 +32,23 @@ There was a problem with the file you submitted. Please ensure the guidelines ab
 {{ form.as_table }}
 </table>
 
+<p>
+{% if type == 'OD' %}
+
+<table class = "formtable">
+{%for algorithm in algorithms %}
+    <tr>
+    <th>
+    {{algorithm.name}}
+    </th>
+    <td>
+    {{algorithm.form_instance.as_p}}
+    </td>
+    </tr>
+{%endfor%}
+</table>
+
+{%endif%}
 <input type="submit" value="Submit">
 </form>
 
