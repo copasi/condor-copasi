@@ -1,4 +1,41 @@
 {% extends "tasks/tasks.html" %}
+{% block head %}
+{% if type == 'OD' %}
+<script type="text/javascript">
+function toggle(classname, box) { 
+    var vis = (box.checked) ? "block" : "none";
+    
+    element = document.getElementById(classname);
+    element.style.display = box.checked? "block":"none" ;
+        
+}
+
+function initialhide(){
+    {% for algorithm in algorithms %}
+        var box = document.getElementById('id_{{algorithm.prefix}}-enabled')
+        toggle('{{algorithm.prefix}}', box)
+    {% endfor %}
+}
+
+function selectall(select){
+    {% for algorithm in algorithms %}
+        var box = document.getElementById('id_{{algorithm.prefix}}-enabled');        
+        if (box.checked != select){
+            box.checked = select
+            toggle('{{algorithm.prefix}}', box)
+        }
+    {% endfor %}
+}
+</script>
+
+{% endif %}
+{% endblock %}
+
+{% block bodyattrs %}
+{% if type == 'OD' %}
+ onload="initialhide()"
+{% endif %}
+{%endblock%}
 
 {% block breadcrumbs_l3 %}
 {% if type == "SO" %} 
@@ -26,6 +63,13 @@ There was a problem with the file you submitted. Please ensure the guidelines ab
 <ul><li>{{file_error}}</li></ul></div>
 {% endif %}
 
+{% if error %}
+<div class="error">
+There was an error with the form below:
+<ul><li>{{error}}</li></ul>
+</div>
+{% endif %}
+
 <form action="" method="post" enctype="multipart/form-data">
 {% csrf_token %}
 <table class="formtable">
@@ -34,19 +78,29 @@ There was a problem with the file you submitted. Please ensure the guidelines ab
 
 <p>
 {% if type == 'OD' %}
-
-<table class = "formtable">
+<input type="button" name="select_all_button" value="Select All" onclick="selectall(true);"> <input type="button" name="deselect_all_button" value="Deselect All" onclick="selectall(false);">
 {%for algorithm in algorithms %}
+<div class="algorithm">
+<table class = "formtable" id="{{algorithm.prefix}}">
+    <h3>{{algorithm.name}}</h3>
+
+    {% for field in algorithm.form_instance %}
+    
+    {% if forloop.first%} 
+    <b>{{field.label_tag}}</b>: {{field}}
+    {% else %}
     <tr>
-    <th>
-    {{algorithm.name}}
-    </th>
-    <td>
-    {{algorithm.form_instance.as_p}}
-    </td>
+        {{ field.errors }}
+        <th> {{ field.label_tag }} </th>
+        <td> {{ field }} </tr>
     </tr>
-{%endfor%}
+    {%endif %}
+    {% endfor %}
+    </div>
 </table>
+</div>
+<br>
+{% endfor %}
 
 {%endif%}
 <input type="submit" value="Submit">

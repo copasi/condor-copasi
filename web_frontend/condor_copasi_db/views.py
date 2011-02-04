@@ -62,20 +62,21 @@ class StochasticUploadModelForm(UploadModelForm):
 class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
     parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
 
+
 #Forms for the optimization repeat w/different algorithms task
 class CurrentSolutionStatisticsForm(forms.Form):
     enabled = forms.BooleanField(label='Enabled', required=False)
     
     
 class GeneticAlgorithmForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('genetic_algorithm', this);",}))
     no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
     population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
     random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
     seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
     
 class GeneticAlgorithmSRForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('genetic_algorithm_sr', this);",}))
     no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
     population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
     random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
@@ -83,37 +84,37 @@ class GeneticAlgorithmSRForm(forms.Form):
     pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
     
 class HookeAndJeevesForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('hooke_and_jeeves', this);",}))
     iteration_limit = forms.IntegerField(label='Iteration Limit', initial=50, min_value=1)
     tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
     rho = forms.FloatField(label='Rho', initial=0.2, min_value=0, max_value=1)
     
 class LevenbergMarquardtForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('levenberg_marquardt', this);",}))
     iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
     tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
     
 class EvolutionaryProgrammingForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('evolutionary_programming', this);",}))
     no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
     population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
     random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
     seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
     
 class RandomSearchForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('random_search', this);",}))
     no_of_iterations = forms.IntegerField(label='Number of Iterations', initial=100000, min_value=1)
     random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
     seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
     
 class NelderMeadForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('nelder_mead', this);",}))
     iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
     tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
     scale = forms.FloatField(label='Scale', initial=10, min_value=0)
     
 class ParticleSwarmForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('particle_swarm', this);",}))
     iteration_limit = forms.IntegerField(label='Iteration Limit', initial=2000, min_value=1)
     swarm_size = forms.IntegerField(label='Swarm Size', initial=50, min_value=1)
     std_deviation = forms.FloatField(label='Std. Deviation', initial=1e-6, min_value=0)
@@ -121,7 +122,7 @@ class ParticleSwarmForm(forms.Form):
     seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
     
 class PraxisForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('praxis', this);",}))
     tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
     
 class TruncatedNewtonForm(forms.Form):
@@ -129,7 +130,7 @@ class TruncatedNewtonForm(forms.Form):
     
     
 class SimulatedAnnealingForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('simulated_annealing', this);",}))
     start_temperature = forms.FloatField(label='Start Temperature', initial=1, min_value=0)
     cooling_factor = forms.FloatField(label='Cooling Factor', initial=0.85, min_value=0)
     tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
@@ -138,7 +139,7 @@ class SimulatedAnnealingForm(forms.Form):
     
     
 class EvolutionStrategyForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('evolution_strategy', this);",}))
     no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
     population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
     random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
@@ -146,7 +147,7 @@ class EvolutionStrategyForm(forms.Form):
     pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
     
 class SteepestDescentForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
+    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('steepest_descent', this);",}))
     iteration_limit = forms.IntegerField(label='Iteration Limit', initial=100, min_value=1)
     tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
     
@@ -294,9 +295,16 @@ def newTask(request, type):
                 algorithm['form_instance'] = algorithm['form'](request.POST, request.FILES, prefix=algorithm['prefix'])
                 
             all_forms_valid = True
+            algorithms_selected = 0
             for algorithm in algorithms:
                 if not algorithm['form_instance'].is_valid():
                     all_form_valid = False
+                if algorithm['form_instance'].cleaned_data['enabled'] == True:
+                    algorithms_selected += 1
+                    
+            if algorithms_selected == 0:
+                all_forms_valid = False
+                error = 'You must select at least one algorithm'
         else:
             all_forms_valid = True
             
@@ -314,6 +322,8 @@ def newTask(request, type):
                     #Otherwise add a new job as unconfirmed
                     if type == 'SS' or type == 'OR' or type=='PR':
                         runs=int(form.cleaned_data['runs'])
+                    elif type == 'OD':
+                        runs = algorithms_selected # Use runs in this instance as a cound of the number of algorithms we're running
                     else:
                         runs = None
                     job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today())
@@ -356,6 +366,11 @@ def newTask(request, type):
                             data_files_list=open(os.path.join(job_dir, 'data_files_list.txt'), 'w')
                             data_files_list.write(filename + '\n')
                             data_files_list.close()
+                    
+                    elif type == 'OD':
+                        #If this is the optimization with different algorithms task, then prepare the relevant files now, while we have the algorithm information available
+                        model = CopasiModel(destination)
+                        model.prepare_od_jobs(algorithms)
                             
                     return HttpResponseRedirect('/tasks/new/confirm/' + str(job.id))
             except:
@@ -394,9 +409,6 @@ def taskConfirm(request, job_id):
                 model = CopasiModel(job.get_filename())
                 if job.job_type == 'SO':
                     model.prepare_so_task()
-                elif job.job_type == 'SS':
-                    pass
-                    #model.prepare_ss_task(job.runs)
 
                 #Mark the job as confirmed
                 job.status = 'N'
@@ -416,13 +428,13 @@ def taskConfirm(request, job_id):
         elif 'cancel_job' in request.POST:
             job.delete()
             return HttpResponseRedirect('/tasks/')
-            
-    pageTitle = 'Confirm Sensitivity Optimization Task'
+
     
     job_filename = job.get_filename()
     
     model = CopasiModel(job_filename)  
     if job.job_type == 'SO':
+        pageTitle = 'Confirm Sensitivity Optimization Task'
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
@@ -434,6 +446,7 @@ def taskConfirm(request, job_id):
         return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
         
     elif job.job_type == 'SS':
+        pageTitle = 'Confirm Stochastic Simulation Task'
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
@@ -443,6 +456,7 @@ def taskConfirm(request, job_id):
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     elif job.job_type == 'PS':
+        pageTitle = 'Confirm Parallel Scan Task'
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
@@ -452,6 +466,7 @@ def taskConfirm(request, job_id):
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
     elif job.job_type == 'OR':
+        pageTitle = 'Confirm Optimization Repeat Task'
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
@@ -461,6 +476,7 @@ def taskConfirm(request, job_id):
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
     elif job.job_type == 'PR':
+        pageTitle = 'Confirm Parameter Estimation Repeat Task'
         job_details = (
             ('Job Name', job.name),
             ('File Name', job.model_name),
@@ -468,7 +484,15 @@ def taskConfirm(request, job_id):
             ('Number of Repeats', job.runs),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
-    
+    elif job.job_type == 'OD':
+        pageTitle = 'Confirm Optimization Repeat with Different Algorithms Task'
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Number of Algorithms Selected', job.runs),
+        )
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
 @login_required
 def myAccount(request):
     pageTitle = 'My Account'

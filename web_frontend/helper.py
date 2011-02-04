@@ -50,7 +50,9 @@ for job in new_jobs:
         elif job.job_type == 'PR':
             no_of_jobs = model.prepare_pr_jobs(job.runs)
             condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs)
-                    
+        elif job.job_type == 'OD':
+            #No need to prepare the job. This was done as the job was submitted
+            condor_jobs = model.prepare_od_condor_jobs(job.runs)           
         else:
             continue
            

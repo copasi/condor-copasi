@@ -105,6 +105,13 @@ div.review th, div.review td{
     border: 1px dotted gray;
 }
 
+div.algorithm{
+    border: 1px solid gray;
+    margin-left: 2px;
+    margin-right: 20px;
+    padding: 5px;
+}
+
 table.jobtable {
     border-collapse: collapse;
     background: #e6e6e6;

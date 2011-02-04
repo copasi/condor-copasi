@@ -1306,3 +1306,423 @@ queue\n""")
             })
 
         return condor_jobs
+        
+    def prepare_od_jobs(self, algorithms):
+        """Prepare the jobs for the optimization with different algorithms task
+        
+        algorithms is a dict containing the form instance from newTask() in views.py"""
+        
+        optTask = self.__getTask('optimization')
+        
+        report = optTask.find(xmlns + 'Report')
+        method = optTask.find(xmlns + 'Method')
+        
+        output_counter = 0
+        for algorithm in algorithms:
+            if algorithm['prefix'] == 'current_solution_statistics':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Current Solution Statistics'
+                    method.attrib['type'] = 'CurrentSolutionStatistics'
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+            if algorithm['prefix'] == 'genetic_algorithm':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Genetic Algorithm'
+                    method.attrib['type'] = 'GeneticAlgorithm'
+                    
+                    #Add sub parameters
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Number of Generations'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['no_of_generations'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Population Size'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['population_size'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Random Number Generator'
+                    p3.attrib['type'] = 'unsignedInteger'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Seed'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'genetic_algorithm_sr':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Genetic Algorithm SR'
+                    method.attrib['type'] = 'GeneticAlgorithmSR'
+                    
+                    #Add sub parameters
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Number of Generations'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['no_of_generations'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Population Size'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['population_size'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Random Number Generator'
+                    p3.attrib['type'] = 'unsignedInteger'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Seed'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
+           
+                    p5 = etree.SubElement(method, xmlns+'Parameter')
+                    p5.attrib['name'] = 'Pf'
+                    p5.attrib['type'] = 'float'
+                    p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['pf']) 
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'hooke_and_jeeves':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Hooke & Jeeves'
+                    method.attrib['type'] = 'HookeJeeves'
+                    
+                    #Add sub parameters
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Iteration Limit'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['iteration_limit'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Tolerance'
+                    p2.attrib['type'] = 'float'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Rho'
+                    p3.attrib['type'] = 'float'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['rho'])
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'levenberg_marquardt':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Levenberg - Marquardt'
+                    method.attrib['type'] = 'LevenbergMarquardt'
+                    
+                    #Add sub parameters
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Iteration Limit'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['iteration_limit'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Tolerance'
+                    p2.attrib['type'] = 'float'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
+
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'evolutionary_programming':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Evolutionary Programming'
+                    method.attrib['type'] = 'EvolutionaryProgram'
+                    
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Number of Generations'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['no_of_generations'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Population Size'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['population_size'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Random Number Generator'
+                    p3.attrib['type'] = 'unsignedInteger'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Seed'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
+
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'random_search':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Random Search'
+                    method.attrib['type'] = 'RandomSearch'
+                    
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Number of Iterations'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['no_of_iterations'])
+                    
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Random Number Generator'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Seed'
+                    p3.attrib['type'] = 'unsignedInteger'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
+
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+                    
+            if algorithm['prefix'] == 'nelder_mead':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Nelder - Mead'
+                    method.attrib['type'] = 'NelderMead'
+                    
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Iteration Limit'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['iteration_limit'])
+                    
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Tolerance'
+                    p2.attrib['type'] = 'unsignedFloat'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Scale'
+                    p3.attrib['type'] = 'unsignedFloat'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['scale'])          
+
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'particle_swarm':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Particle Swarm'
+                    method.attrib['type'] = 'ParticleSwarm'
+                    
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Iteration Limit'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['iteration_limit'])
+                    
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Swarm Size'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['swarm_size'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Std. Deviation'
+                    p3.attrib['type'] = 'unsignedFloat'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['std_deviation'])          
+
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Random Number Generator'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p5 = etree.SubElement(method, xmlns+'Parameter')
+                    p5.attrib['name'] = 'Seed'
+                    p5.attrib['type'] = 'unsignedInteger'
+                    p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])    
+                    
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+                    
+            if algorithm['prefix'] == 'praxis':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Praxis'
+                    method.attrib['type'] = 'Praxis'
+                    
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Tolerance'
+                    p1.attrib['type'] = 'float'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'truncated_newton':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Truncated Newton'
+                    method.attrib['type'] = 'TruncatedNewton'
+                    
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'simulated_annealing':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Simulated Annealing'
+                    method.attrib['type'] = 'SimulatedAnnealing'
+
+
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Start Temperature'
+                    p1.attrib['type'] = 'unsignedFloat'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['start_temperature'])
+                    
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Cooling Factor'
+                    p2.attrib['type'] = 'unsignedFloat'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['cooling_factor'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Tolerance'
+                    p3.attrib['type'] = 'unsignedFloat'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])          
+
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Random Number Generator'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p5 = etree.SubElement(method, xmlns+'Parameter')
+                    p5.attrib['name'] = 'Seed'
+                    p5.attrib['type'] = 'unsignedInteger'
+                    p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])    
+
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+                    
+            if algorithm['prefix'] == 'evolution_strategy':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Evolution Strategy (SRES)'
+                    method.attrib['type'] = 'EvolutionaryStrategySR'
+
+                    #Add sub parameters
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Number of Generations'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['no_of_generations'])
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Population Size'
+                    p2.attrib['type'] = 'unsignedInteger'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['population_size'])
+                    
+                    p3 = etree.SubElement(method, xmlns+'Parameter')
+                    p3.attrib['name'] = 'Random Number Generator'
+                    p3.attrib['type'] = 'unsignedInteger'
+                    p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['random_number_generator'])
+                    
+                    p4 = etree.SubElement(method, xmlns+'Parameter')
+                    p4.attrib['name'] = 'Seed'
+                    p4.attrib['type'] = 'unsignedInteger'
+                    p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
+           
+                    p5 = etree.SubElement(method, xmlns+'Parameter')
+                    p5.attrib['name'] = 'Pf'
+                    p5.attrib['type'] = 'float'
+                    p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['pf']) 
+
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1
+                    
+            if algorithm['prefix'] == 'steepest_descent':
+                if algorithm['form_instance'].cleaned_data['enabled']:
+                    method.clear()
+                    method.attrib['name'] = 'Steepest Descent'
+                    method.attrib['type'] = 'SteepestDescent'
+
+
+                    p1 = etree.SubElement(method, xmlns+'Parameter')
+                    p1.attrib['name'] = 'Iteration Limit'
+                    p1.attrib['type'] = 'unsignedInteger'
+                    p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['iteration_limit'])
+                    
+                    
+                    p2 = etree.SubElement(method, xmlns+'Parameter')
+                    p2.attrib['name'] = 'Tolerance'
+                    p2.attrib['type'] = 'float'
+                    p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
+
+                    report.attrib['target'] = algorithm['prefix'] + '_out.txt'
+                    
+                    self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
+                    output_counter += 1                    
+        return
+        
+    def prepare_od_condor_jobs(self, jobs):
+        """Prepare the condor jobs for the optimization with different algorithms task"""
+                ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+                    
+        for i in range(jobs):
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+
+        return condor_jobs

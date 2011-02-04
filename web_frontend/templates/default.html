@@ -6,10 +6,11 @@
 Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
 <link rel="stylesheet" type="text/css" href="http://{{ request.get_host }}/static/style.css" /> 
-
+{%block head%}
+{% endblock %}
 </head>
 
-<body>
+<body {% block bodyattrs%}{%endblock%}>
 <div id="container">
     <div id="wrapper">
         <div id="header">
