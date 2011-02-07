@@ -192,6 +192,7 @@ for job in waiting:
             condor_jobs = models.CondorJob.objects.filter(parent=job)
             no_of_jobs = len(condor_jobs)
             #TODO: Do we need to collate any output files?
+            model.process_or_results(no_of_jobs)
             job.status = 'C'
             job.last_update = datetime.datetime.today()
             job.finish_time = datetime.datetime.today()

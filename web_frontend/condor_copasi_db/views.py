@@ -700,7 +700,13 @@ def jobOutput(request, job_name):
             img_string += '&legend=true'
         if grid:
             img_string += '&grid=true'
-            
+    
+    elif job.job_type == 'OR':
+        output = model.get_or_best_value()
+        
+        best_value = output[0][1]
+        parameters = output[1:]
+    
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
   

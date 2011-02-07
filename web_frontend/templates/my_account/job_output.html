@@ -7,7 +7,7 @@
 
 {% if job.job_type == 'SO' %}
 <div class = "review">
-    <p><h3>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}<h3></b></p>
+    <p><h3>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}</b></h3></p>
     <table>
         <tr><th>Parameter</th><th>Minimum value</th><th>Maximum value</th><th>Min CPU time</th><th>Min evals</th><th>Max CPU time</th><th>Max Evals</th></tr>
         {% for result in results %}
@@ -43,6 +43,21 @@
 </table>
 <input type="submit" value="Update plot">
 </form>
+{% endif %}
+{% if job.job_type == 'OR' %}
+<div class = "review">
+    <p><h3>Best value found for optimization task: <b>{{best_value}}</b></h3></p>
+    <table>
+        <tr><th>Parameter</th><th>Value</th></tr>
+        {% for parameter in parameters %}
+        <tr>
+            <td><b>{{parameter.0}}</b></td>
+            <td>{{parameter.1}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
 {% endif %}
 
 {% endblock %}
