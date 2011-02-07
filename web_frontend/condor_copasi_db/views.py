@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
 import web_frontend.condor_copasi_db.views
-from web_frontend import settings
+from web_frontend import settings, condor_log
 from web_frontend.condor_copasi_db import models
 from web_frontend import views as web_frontend_views
 from web_frontend.copasi.model import CopasiModel
@@ -588,6 +588,16 @@ def jobDetails(request, job_name):
     job_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
     if job.finish_time != None:
         job_removal_date = job.finish_time + datetime.timedelta(days=job_removal_days)
+        
+        #Calculate the total amount of CPU time used by the individual condor jobs
+        total_cpu_time = datetime.timedelta()
+        for condor_job in models.CondorJob.objects.filter(parent=job):
+            try:
+                log_file = os.path.join(job.get_path(), condor_job.log_file)
+                log = condor_log.Log(log_file)
+                total_cpu_time += log.remote_usage_time
+            except:
+                raise
     
     return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
     

@@ -15,7 +15,7 @@
 
 {% block body %}
 
-{% if job.status == 'C' %}
+{% if job.status == 'C'%}
 <div class="job_complete">
 
 <b>This job has completed.</b>
@@ -73,6 +73,7 @@
         <tr><th>Submission time:</th><td>{{job.submission_time}}</td></tr>
         {% if job.finish_time != None %}
         <tr><th>Finish time:</th><td>{{job.finish_time}}</td></tr>
+        <tr><th>Total CPU time used:</th><td>{{total_cpu_time}}</td></tr>
         {% endif %}
     </table>
 </div>
