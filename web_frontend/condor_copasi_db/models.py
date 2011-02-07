@@ -10,7 +10,7 @@ class Job(models.Model):
         ('PS', 'Scan in Parallel'),
         ('OR', 'Optimization Repeat'),
         ('PR', 'Parameter Estimation Repeat'),
-        ('OD', 'Optimizatino Repeat with Different Algorithms'),
+        ('OD', 'Optimization Repeat with Different Algorithms'),
     )
     #The type of job, e.g. sensitivity optimization
     job_type = models.CharField(max_length=2, choices=JOB_TYPE_CHOICES)
@@ -98,4 +98,4 @@ class CondorJob(models.Model):
             import subprocess
             p = subprocess.Popen('condor_rm', self.queue_id)
             p.comminucate()
-        super(Job, self).delete(*args, **kwargs)
+        super(CondorJob, self).delete(*args, **kwargs)

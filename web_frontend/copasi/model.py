@@ -25,7 +25,7 @@ class CopasiModel:
         self.model = etree.parse(filename)
         self.binary = binary
         self.binary_dir = binary_dir
-        self.name = filename #TODO: change this to represent the actual model name, found in the xml
+        self.name = filename
         (head, tail) = os.path.split(filename)
         self.path = head
     def __unicode__(self):
@@ -526,12 +526,50 @@ class CopasiModel:
 
 
 
-    def prepare_ss_task(self, runs, max_runs_per_job, no_of_jobs):
+    def prepare_ss_task(self, runs):
         """Prepares the temp copasi files needed to run n stochastic simulation runs
         
         First sets up the scan task with a repeat, and sets each repeat to run i times. 
         Uses a the chiunking algorithm to determine how many repeats to run for each scan.
         """ 
+        
+        ############
+        #Benchmarking
+        ############
+        #Measure the time taken to run a single run of the timecourse task
+        
+        #Clear tasks, and get the time course task
+        
+        self.__clear_tasks()
+        timeTask = self.__getTask('timeCourse')
+        timeTask.attrib['scheduled'] = 'true'
+        
+        import tempfile
+        #Write a temp XML file
+
+        temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
+        tempdir, rel_filename = os.path.split(temp_filename)
+        
+        self.model.write(temp_filename)
+        
+        #Note the start time
+        start_time = time.time()
+        self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+        finish_time = time.time()
+        time_per_step = finish_time - start_time
+        
+        os.remove(temp_filename)
+        
+        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds) (or whatever the settings parameter is set to)
+        #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+        
+        time_per_job = settings.IDEAL_JOB_TIME * 60
+        
+        #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+        repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), runs)
+        
+        no_of_jobs = int(math.ceil(float(runs) / repeats_per_job))        
+
         #First clear the task list, to ensure that no tasks are set to run
         self.__clear_tasks()
 
@@ -614,17 +652,17 @@ class CopasiModel:
         runs_left=runs # Decrease this value as we generate the jobs
         
         for i in range(no_of_jobs):
-            #Calculate the number of runs per job. This will either be max_runs_per_job, or if this is the last job, runs_left
-            job_runs = min(max_runs_per_job, runs_left)
-            no_of_steps = str(job_runs)
-            p1.attrib['value'] = no_of_steps
-            runs_left -= job_runs
+            #Calculate the number of runs per job. This will either be repeats_per_job, or if this is the last job, runs_left
+            
+            no_of_steps = min(repeats_per_job, runs_left)
+            p1.attrib['value'] = str(no_of_steps)
+            runs_left -= no_of_steps
             
             report.set('target', str(i) + '_out.txt')
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
             self.model.write(filename)
             
-        return
+        return no_of_jobs
             
     def prepare_ss_condor_jobs(self, jobs):
         """Prepare the neccessary .job files to submit to condor for the stochastic simulation task"""
@@ -692,7 +730,7 @@ transfer_input_files = ${raw_results}
 log =  results.log  
 error = results.err
 output = results.out
-Requirements = ( OpSys == "LINUX" && HAS_PYTHON26 == True) 
+Requirements = ( OpSys == "LINUX" && HAS_PYTHON26 == True)  && (Memory > 0 ) && (Machine != "e-cskc38c04.eps.manchester.ac.uk") && (machine != "localhost.localdomain")
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 queue\n""")

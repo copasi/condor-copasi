@@ -30,13 +30,7 @@ for job in new_jobs:
         if job.job_type == 'SO':
             condor_jobs = model.prepare_so_condor_jobs()
         elif job.job_type == 'SS':
-            #Do 1000 runs per job. TODO: 'chunk' in a more intelligent manner
-            max_runs_per_job = 1000
-            import math
-            #The number of jobs we need is the ceiling of the no of runs/max runs per job
-            no_of_jobs = int(math.ceil(float(job.runs) / float(max_runs_per_job)))
-
-            model.prepare_ss_task(job.runs, max_runs_per_job, no_of_jobs)
+            no_of_jobs = model.prepare_ss_task(job.runs)
             condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
             
         elif job.job_type == 'PS':
