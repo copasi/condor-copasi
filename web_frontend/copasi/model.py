@@ -1182,7 +1182,7 @@ queue\n""")
         
         
         #Benchmarking.
-        #As per usual, first calculate how long a single parameter scan will take
+        #As per usual, first calculate how long a single parameter fit will take
         
         self.__clear_tasks()
         fitTask = self.__getTask('parameterFitting')
@@ -1190,18 +1190,12 @@ queue\n""")
         fitTask.attrib['scheduled'] = 'true'
         fitTask.attrib['updateModel'] = 'false'
         
-        #Set the fitTask to use the data file 'parameter_estimation_data'
-        
-        
-        
-        import tempfile
 
+
+        import tempfile
         tempdir = tempfile.mkdtemp()
-#        temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
-#        tempdir, rel_filename = os.path.split(temp_filename)
         
         temp_filename = os.path.join(tempdir, 'auto_copasi_temp.cps')
-
         
         #Copy the data file(s) over to the temp dir
         import shutil
