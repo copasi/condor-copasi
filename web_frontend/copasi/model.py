@@ -73,10 +73,15 @@ class CopasiModel:
                 return 'A report must be set for the scan task'
             return True
             
-        elif job_type == 'OR':
+        elif job_type == 'OR' or job_type == 'OD':
             #Check that at least one parameter has been set
             if len(self.get_optimization_parameters()) == 0:
                 return 'No parameters have been set for the optimization task'
+            return True
+        elif job_type == 'PR':
+            #Check that at least one parameter has been set
+            if len(self.get_parameter_estimation_parameters()) == 0:
+                return 'No parameters have been set for the sensitivites task'
             return True
         else:
             return True
