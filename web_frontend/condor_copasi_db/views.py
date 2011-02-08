@@ -706,7 +706,17 @@ def jobOutput(request, job_name):
         
         best_value = output[0][1]
         parameters = output[1:]
-    
+    elif job.job_type == 'PR':
+        output = model.get_pr_best_value()
+        
+        best_value = output[0][1]
+        parameters = output[3:]
+        
+    elif job.job_type == 'OD':
+        output = model.get_od_results()
+        
+        best_value = output[1][1]
+        
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
   

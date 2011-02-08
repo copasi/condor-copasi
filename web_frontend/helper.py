@@ -46,7 +46,7 @@ for job in new_jobs:
             condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs)
         elif job.job_type == 'OD':
             #No need to prepare the job. This was done as the job was submitted
-            condor_jobs = model.prepare_od_condor_jobs(job.runs)           
+            condor_jobs = model.prepare_od_condor_jobs()           
         else:
             continue
            
@@ -62,7 +62,7 @@ for job in new_jobs:
         job.last_update=datetime.datetime.today()
         job.save()
     except:
-        raise
+        #raise
         job.status = 'E'
         job.last_update=datetime.datetime.today()
         job.finish_time=datetime.datetime.today()
@@ -201,7 +201,15 @@ for job in waiting:
         elif job.job_type == 'PR':
             condor_jobs = models.CondorJob.objects.filter(parent=job)
             no_of_jobs = len(condor_jobs)
-            #TODO: Do we need to collate any output files?
+            model.process_pr_results(no_of_jobs)
+            job.status = 'C'
+            job.last_update = datetime.datetime.today()
+            job.finish_time = datetime.datetime.today()
+            job.save()
+        elif job.job_type == 'OD':
+            condor_jobs = models.CondorJob.objects.filter(parent=job)
+            output_files = [cj.job_output for cj in condor_jobs]
+            model.process_od_results(output_files)
             job.status = 'C'
             job.last_update = datetime.datetime.today()
             job.finish_time = datetime.datetime.today()
@@ -212,7 +220,7 @@ for job in waiting:
         job.last_update=datetime.datetime.today()
         job.save()
         print 'Error processing job ' + str(job.name)
-        raise
+        #raise
         
         
 complete = models.Job.objects.filter(status='C')

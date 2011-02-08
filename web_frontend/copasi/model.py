@@ -215,6 +215,58 @@ class CopasiModel:
 
         return parameters
     
+    def get_parameter_estimation_parameters(self, friendly=True):
+        """Returns a list of the parameter names to be included in the parameter estimation task. Will optionally process names to make them more user friendly"""
+        #Get the sensitivities task:
+        fitTask=self.__getTask('parameterFitting')
+        fitProblem = fitTask.find(xmlns + 'Problem')
+        optimizationItems = fitProblem.find(xmlns + 'ParameterGroup')
+        parameters = []
+        for subGroup in optimizationItems:
+            name = None
+            lowerBound = None
+            upperBound = None
+            startValue = None
+            
+            for item in subGroup:
+                if item.attrib['name'] == 'ObjectCN':
+                    name = item.attrib['value']
+                elif item.attrib['name'] == 'UpperBound':
+                    upperBound = item.attrib['value']
+                elif item.attrib['name'] == 'LowerBound':
+                    lowerBound = item.attrib['value']
+                elif item.attrib['name'] == 'StartValue':
+                    startValue = item.attrib['value']
+            assert name !=None
+            assert lowerBound != None
+            assert upperBound != None
+            assert startValue != None
+              
+            if friendly:
+                #Construct a user-friendly name for the parameter name using regexs
+                #Look for a match for global parameters: Vector=Values[Test parameter],
+                global_string = r'.*Vector=Values\[(?P<name>.*)\].*'
+                global_string_re = re.compile(global_string)
+                global_match = re.match(global_string_re, name)
+                
+                if global_match:
+                    name = global_match.group('name')
+                
+                #else check for a local match.
+                #Vector=Reactions[Reaction] Parameter=k1
+                local_string = r'.*Vector=Reactions\[(?P<reaction>.*)\].*Parameter=(?P<parameter>.*),Reference=Value.*'
+                local_string_re = re.compile(local_string)
+                local_match = re.match(local_string_re, name)
+                
+                if local_match:
+                    reaction = local_match.group('reaction')
+                    parameter = local_match.group('parameter')
+                    name = '(%s).%s'%(reaction, parameter)
+
+            parameters.append((name, lowerBound, upperBound, startValue))
+
+        return parameters
+    
     def get_ps_number(self):
         """Returns the number of runs set up for the parameter scan task"""
         scanTask = self.__getTask('scan')
@@ -346,17 +398,31 @@ class CopasiModel:
     </Report>"""
             ).substitute(report_key=report_key)
             report = etree.XML(report_string)
-            model_name = self.get_name()
+                        
+            listOfReports.append(report)
             
-            table = report.find(xmlns + 'Table')
-            time_object = etree.SubElement(table, xmlns + 'Object')
-            time_object.set('cn', 'Model=' + model_name + ',Reference=Time')
+        elif report_type == 'PR':
+            #Use the following xml string as a template
+            report_string = Template(
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="auto_pr_report" taskType="parameterFitting" separator="&#x09;" precision="6">
+<Comment>
+        Condor Copasi automatically generated report.
+      </Comment>
+      <Table printTitle="1">
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Best Parameters"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Best Value"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Timer=CPU Time"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Function Evaluations"/>
+      </Table>
+    </Report>"""
+            ).substitute(report_key=report_key)
+            report = etree.XML(report_string)
             
-            for variable in self.get_variables():
-                row = etree.SubElement(table, xmlns + 'Object')
-                row.set('cn', variable) 
+            listOfReports.append(report)
             
-            listOfReports.append(report)        
+            
+                        
+            
         
         else:
             raise Exception('Unknown report type')
@@ -1097,8 +1163,8 @@ queue\n""")
     
         #If no report has yet been set, report == None. Therefore, create new report
         if optReport == None:
-            report = etree.Element(xmlns + 'Report')
-            scanTask.insert(0,report)
+            optReport = etree.Element(xmlns + 'Report')
+            optTask.insert(0,optReport)
         
         optReport.set('reference', report_key)
         optReport.set('append', '1')
@@ -1239,8 +1305,8 @@ queue\n""")
         return condor_jobs
         
     def process_or_results(self, jobs):
-        """Process the results of the OR task by copying them all into one file, named results.txt.
-        As we copy, extract the best value, and write the details to best_value.txt"""
+        """Process the results of the OR task by copying them all into one file, named raw_results.txt.
+        As we copy, extract the best value, and write the details to results.txt"""
         
         #Check if we're maximising or minimising
         optTask = self.__getTask('optimization')
@@ -1253,13 +1319,13 @@ queue\n""")
         else:
             maximize = True
         
-        output_file = open(os.path.join(self.path, 'raw_.txt'), 'w')
+        output_file = open(os.path.join(self.path, 'raw_results.txt'), 'w')
         
         #Keep track of the last read line before a newline; this will be the best value from an optimization run
         last_line = ''
-        #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0	20	0	6.5273e+20	5.51699e+20
-        #Contains parameter values, the best optimization value, the cpu time, and some other values, e.g. particle numbers that Copasi likes to add. These could be removed, but they seem useful.
-        output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+\.*'
+        #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0	
+        #Contains parameter values, the best optimization value, the cpu time, and some other values.
+        output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\.*'
         output_re = re.compile(output_string)
         
         best_value = None
@@ -1307,8 +1373,8 @@ queue\n""")
                 
         output_file.close()
         
-        #Write the best value to best_value.txt
-        output_file = open(os.path.join(self.path, 'best_value.txt'), 'w')
+        #Write the best value to results.txt
+        output_file = open(os.path.join(self.path, 'results.txt'), 'w')
         
         output_file.write('Best value\t')
         
@@ -1329,8 +1395,8 @@ queue\n""")
         output_file.close()
         
     def get_or_best_value(self):
-        """Read the best value and best parameters from best_value.txt"""
-        best_values = open(os.path.join(self.path, 'best_value.txt'),'r').readlines()
+        """Read the best value and best parameters from results.txt"""
+        best_values = open(os.path.join(self.path, 'results.txt'),'r').readlines()
         
         headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
         values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
@@ -1358,6 +1424,22 @@ queue\n""")
         fitTask.attrib['scheduled'] = 'true'
         fitTask.attrib['updateModel'] = 'false'
         
+        #Even though we're not interested in the output at the moment, we have to set a report for the parameter fitting task, or Copasi will complain!
+        #Create a new report for the or task
+        report_key = 'condor_copasi_parameter_fitting_repeat_report'
+        self.__create_report('PR', report_key)
+        
+        #And set the new report for the or task
+        fitReport = fitTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if fitReport == None:
+            fitReport = etree.Element(xmlns + 'Report')
+            fitTask.insert(0,fitReport)
+        
+        fitReport.set('reference', report_key)
+        fitReport.set('append', '1')
+        fitReport.set('target', 'copasi_temp_output.txt')        
 
 
         import tempfile
@@ -1399,11 +1481,21 @@ queue\n""")
         #Job preparation
         ############
         self.__clear_tasks()
+        fitReport.attrib['target'] = ''
         #Get the scan task
         scanTask = self.__getTask('scan')
         scanTask.attrib['scheduled'] = 'true'
         
+        #Set the new report for the scan task
+        report = scanTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            scanTask.insert(0,report)
         
+        report.set('reference', report_key)
+        report.set('append', '1')
         
         #Prepare the scan task
         
@@ -1464,6 +1556,8 @@ queue\n""")
             
             #Set the number of repeats for the scan task
             p1.attrib['value'] = str(no_of_repeats)
+            #And the report target output
+            report.attrib['target'] = str(i) + '_out.txt'
             
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) +'.cps')
             self.model.write(filename)
@@ -1507,17 +1601,127 @@ queue\n""")
 
         return condor_jobs
         
+    def process_pr_results(self, jobs):
+        """Process the results of the PR task by copying them all into one file, named raw_results.txt.
+        As we copy, extract the best value, and write the details to results.txt"""
+        
+
+        
+        output_file = open(os.path.join(self.path, 'raw_results.txt'), 'w')
+        
+        #Keep track of the last read line before a newline; this will be the best value from an optimization run
+        last_line = ''
+        #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0   100
+        #Contains parameter values, the best optimization value, the cpu time, and some other values, e.g. particle numbers that Copasi likes to add. These could be removed, but they seem useful.
+        output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
+        output_re = re.compile(output_string)
+        
+        best_value = None
+        best_line = None
+        
+        #Copy the contents of the first file to results.txt
+        for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
+            output_file.write(line)
+            if line == '\n':
+                last_value = output_re.match(last_line).groupdict()['best_value']
+                if best_value != None:
+                    if last_value < best_value:
+                        best_value = last_value
+                        best_line = last_line
+                elif best_value == None:
+                    best_value = last_value
+                    best_line = last_line
+            else:
+                last_line = line
+                
+        #And for all other files, copy everything but the last line
+        for i in range(jobs)[1:]:
+            firstLine = True
+            for line in open(os.path.join(self.path, str(i) + '_out.txt'), 'r'):
+                if not firstLine:
+                    output_file.write(line)
+                    if line == '\n':
+                        last_value = output_re.match(last_line).groupdict()['best_value']
+                        if last_value < best_value:
+                            best_value = last_value
+                            best_line = last_line
+                    else:
+                        last_line = last_line
+                firstLine = False
+                
+                
+        output_file.close()
+        
+        #Write the best value to results.txt
+        output_file = open(os.path.join(self.path, 'results.txt'), 'w')
+        
+        output_file.write('Best value\tCPU time\tFunction evals\t')
+        
+        for parameter in self.get_parameter_estimation_parameters():
+
+            output_file.write(parameter[0])
+            output_file.write('\t')
+        output_file.write('\n')
+
+        best_line_dict = output_re.match(best_line).groupdict()
+
+        output_file.write(best_line_dict['best_value'])
+        output_file.write('\t')
+        output_file.write(best_line_dict['cpu_time'])
+        output_file.write('\t')
+        output_file.write(best_line_dict['function_evals'])
+        output_file.write('\t')
+        
+        for parameter in best_line_dict['params'].split('\t'):
+            output_file.write(parameter)
+            output_file.write('\t')
+        output_file.close()
+        
+    def get_pr_best_value(self):
+        """Read the best value and best parameters from results.txt"""
+        best_values = open(os.path.join(self.path, 'results.txt'),'r').readlines()
+        
+        headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
+        values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
+        print values
+        
+        output = []
+        
+        for i in range(len(headers)):
+            output.append((headers[i], values[i]))
+
+
+        return output
+        
+        
+        
+        
     def prepare_od_jobs(self, algorithms):
         """Prepare the jobs for the optimization with different algorithms task
         
         algorithms is a dict containing the form instance from newTask() in views.py"""
         
         optTask = self.__getTask('optimization')
+        #Create a new report for the or task
+        report_key = 'condor_copasi_optimization_report'
+        self.__create_report('OR', report_key)
         
+        #And set the new report for the or task
         report = optTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            optTask.insert(0,report)
+        
+        report.set('reference', report_key)
+        report.set('append', '1')        
+
         method = optTask.find(xmlns + 'Method')
         
         output_counter = 0
+        
+        output_files = []
         for algorithm in algorithms:
             if algorithm['prefix'] == 'current_solution_statistics':
                 if algorithm['form_instance'].cleaned_data['enabled']:
@@ -1526,7 +1730,7 @@ queue\n""")
                     method.attrib['type'] = 'CurrentSolutionStatistics'
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
             if algorithm['prefix'] == 'genetic_algorithm':
@@ -1557,7 +1761,7 @@ queue\n""")
                     p4.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])          
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1594,7 +1798,7 @@ queue\n""")
                     p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['pf']) 
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1621,7 +1825,7 @@ queue\n""")
                     p3.attrib['value'] = str(algorithm['form_instance'].cleaned_data['rho'])
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1644,7 +1848,7 @@ queue\n""")
 
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1676,7 +1880,7 @@ queue\n""")
 
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1704,7 +1908,7 @@ queue\n""")
 
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1733,7 +1937,7 @@ queue\n""")
 
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1771,7 +1975,7 @@ queue\n""")
                     
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1788,7 +1992,7 @@ queue\n""")
                     p1.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1799,7 +2003,7 @@ queue\n""")
                     method.attrib['type'] = 'TruncatedNewton'
                     
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1837,7 +2041,7 @@ queue\n""")
                     p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['seed'])    
 
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1875,7 +2079,7 @@ queue\n""")
                     p5.attrib['value'] = str(algorithm['form_instance'].cleaned_data['pf']) 
 
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
                     output_counter += 1
                     
@@ -1898,18 +2102,27 @@ queue\n""")
                     p2.attrib['value'] = str(algorithm['form_instance'].cleaned_data['tolerance'])
 
                     report.attrib['target'] = algorithm['prefix'] + '_out.txt'
-                    
+                    output_files.append(algorithm['prefix']+'_out.txt')
                     self.model.write(os.path.join(self.path, 'auto_copasi_' + str(output_counter) + '.cps'))
-                    output_counter += 1                    
+                    output_counter += 1
+                    
+                    
+        output_files_list = open(os.path.join(self.path, 'output_files_list.txt'), 'w')
+        for output_file in output_files:
+            output_files_list.write(output_file + '\n')
+        output_files_list.close()
         return
         
-    def prepare_od_condor_jobs(self, jobs):
+    def prepare_od_condor_jobs(self):
         """Prepare the condor jobs for the optimization with different algorithms task"""
                 ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        output_files = open(os.path.join(self.path, 'output_files_list.txt'), 'r').readlines()
+
+        
         condor_jobs = []
                     
-        for i in range(jobs):
+        for i in range(len(output_files)):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
             condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
@@ -1922,7 +2135,102 @@ queue\n""")
                 'std_output_file': str(copasi_file) + '.out',
                 'std_error_file': str(copasi_file) + '.err',
                 'log_file': str(copasi_file) + '.log',
-                'job_output': str(i) + '_out.txt'
+                'job_output': output_files[i].rstrip('\n'),
             })
 
         return condor_jobs
+        
+    def process_od_results(self, output_files):
+        """Read through the various output files, and find the best result. Return this, along with information about the chosen algorithm"""
+        #Check if we're minimizing or maximizing!
+        optTask = self.__getTask('optimization')
+        problem =  optTask.find(xmlns + 'Problem')
+        for parameter in problem:
+            if parameter.attrib['name']=='Maximize':
+                max_param = parameter.attrib['value']
+        if max_param == '0':
+            maximize = False
+        else:
+            maximize = True
+
+        #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0	
+        #Contains parameter values, the best optimization value, the cpu time, and some other values.
+        output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
+        output_re = re.compile(output_string)
+        
+        best_values = [] # In this list, store a tuple containing the best value, and the file containing it
+        best_value = None
+        
+        #Read through each output file, and extract the last set of params
+        #Keep track of the file with the best result
+        
+        for output_file in output_files:
+            for line in open(os.path.join(self.path, output_file), 'r'):
+                match = output_re.match(line)
+                best_value_for_file = None
+                if match:
+                    current_best_value = match.groupdict()['best_value']
+                    if best_value_for_file == None:
+                        best_value_for_file = current_best_value
+
+                    elif maximize and current_best_value >= best_value:
+                        best_value_for_file = current_best_value
+
+                    elif not maximize and current_best_value <= best_value:
+                        best_value_for_file = current_best_value
+
+                        
+            if best_value == None:
+                best_value = best_value_for_file
+                best_values.append((best_value, output_file))
+            elif maximize and best_value_for_file >= best_value:
+                best_value = best_value_for_file
+                best_values.append((best_value, output_file))
+            elif not maximize and best_value_for_file <= best_value:
+                best_value = best_value_for_file
+                best_values.append((best_value, output_file))
+            
+        #We now know what the best value is, so can remove anything from the list best_values that is less than or greater than this, depending on whether we're maximizing
+        #Copy the items we want to keep to output
+        output = []
+        
+        for value, filename in best_values:
+            if value == best_value:
+                output.append((value, filename))
+        
+        #Now write the algorithm name, best value and parameter values to a file
+        
+        output_file = open(os.path.join(self.path, 'results.txt'), 'w')
+        
+        output_file.write('Algorithm name\tBest value\tCPU time\tFunction evals\t')
+        for name, lowerBound, upperBound, startValue  in self.get_optimization_parameters():
+            output_file.write('Value[' + name + ']' + '\t')
+        output_file.write('\n')
+        
+        for value, filename in output:
+            #Filename is of the format algorithm_name_out.txt
+            #Write the algorithm name
+            output_file.write(filename.rstrip('_out.txt'))
+            output_file.write('\t')
+            output_file.write(str(value) + '\t')
+            
+            #Read through the file and extract the last line
+            for line in open(os.path.join(self.path, filename)):
+                last_line = line
+            match = output_re.match(line)
+            if match:
+                g = match.groupdict()
+                output_file.write(g['cpu_time'] + '\t')
+                output_file.write(g['function_evals'] + '\t')
+                for parameter in g['params'].split('\t'):
+                    output_file.write(parameter + '\t')
+                output_file.write('\n')
+        
+        output_file.close()
+        
+    def get_od_results(self):
+        """Open results.txt, parse the output and return it"""
+        output = []
+        for line in open(os.path.join(self.path, 'results.txt')):
+            output.append(line.rstrip('\n').rstrip('\t').split('\t'))
+        return output

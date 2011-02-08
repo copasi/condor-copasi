@@ -59,5 +59,44 @@
 </div>
 
 {% endif %}
+{% if job.job_type == 'PR' %}
+<div class = "review">
+    <p><h3>Best objective value found for Parameter Estimation task: <b>{{best_value}}</b></h3></p>
+    <table>
+        <tr><th>Parameter</th><th>Value</th></tr>
+        {% for parameter in parameters %}
+        <tr>
+            <td><b>{{parameter.0}}</b></td>
+            <td>{{parameter.1}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 
+{% endif %}
+{% if job.job_type == 'OD' %}
+<div class = "review">
+    <p><h3>Best value found for Optimization task: <b>{{best_value}}</b></h3></p>
+    <table>
+        {% for line in output %}
+        <tr>
+        {% if forloop.first%}
+        {% for item in line %}
+        <th>
+        {{item}}
+        </th>
+        {% endfor %}
+        {% else %}
+        {% for item in line %}
+        <td>
+        {{item}}
+        </td>
+        {% endfor %}
+        {% endif %}
+        </tr>
+      {% endfor %}
+    </table>
+</div>
+
+{% endif %}
 {% endblock %}

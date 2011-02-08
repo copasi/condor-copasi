@@ -20,7 +20,7 @@
 
 <b>This job has completed.</b>
 <ul class="job_details">
-{% if job.job_type == 'SO' or job.job_type == 'SS' or job.job_type == 'OR'%}
+{% if job.job_type == 'SO' or job.job_type == 'SS' or job.job_type == 'OR' or job.job_type == 'PR' or job.job_type == 'OD' %}
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">View</a></b> the results</li>
 {% endif %}
     <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Download</a></b> the results</li>
