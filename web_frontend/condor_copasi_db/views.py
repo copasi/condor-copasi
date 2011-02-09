@@ -171,6 +171,56 @@ class PlotUpdateForm(forms.Form):
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
 
+
+class ChangePasswordForm(forms.Form):
+    old_password = forms.CharField(label='Current password',widget=forms.PasswordInput(render_value=False))
+    new_password_1 = forms.CharField(label='New password',widget=forms.PasswordInput(render_value=False))
+    new_password_2 = forms.CharField(label='New password again',widget=forms.PasswordInput(render_value=False))  
+    
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
+        super(ChangePasswordForm, self).__init__(*args, **kwargs)
+        
+    def clean_old_password(self):
+        user = self.request.user
+        old_pass = self.cleaned_data['old_password']
+        if user.check_password(old_pass):
+            return old_pass
+        else:
+            raise forms.ValidationError('The password you entered was not correct')
+            
+            
+    def clean_new_password_2(self):
+        new_pass_1 = self.cleaned_data['new_password_1']
+        new_pass_2 = self.cleaned_data['new_password_2']
+        
+        if new_pass_1 == new_pass_2:
+            return new_pass_2
+        else:
+            raise forms.ValidationError('The new passwords must match')
+@login_required
+def change_password(request):
+    user = request.user
+    pageTitle = 'Change Password'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    
+    new_jobs = models.Job.objects.filter(user=request.user, status = 'N')
+    submitted_jobs= models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='X')
+    processing_jobs = models.Job.objects.filter(user=request.user, status='W')
+    if request.method == 'POST':
+        form = ChangePasswordForm(request.POST, request=request)
+        if form.is_valid():
+            user.set_password(form.cleaned_data['new_password_1'])
+            user.save()
+            request.session['message'] = 'Password successfully changed'
+            return HttpResponseRedirect('/my_account/')
+    else:
+        form = ChangePasswordForm(request=request)
+    return render_to_response('my_account/change_password.html', locals(), context_instance=RequestContext(request))
+
+
 @login_required
 def newTask(request, type):
     """Upload page for new tasks"""

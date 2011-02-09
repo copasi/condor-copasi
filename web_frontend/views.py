@@ -15,6 +15,7 @@ class LoginForm(forms.Form):
     username = forms.CharField(label='Username')
     password = forms.CharField(label='Password',widget=forms.PasswordInput(render_value=False)) 
 
+
 def loginPage(request):
     if request.user.is_authenticated():
         return HttpResponseRedirect('/')
@@ -55,3 +56,4 @@ def restricted(request):
 def handle_error(request, pageTitle, errors=[]):
     return render_to_response('500.html', locals(), context_instance=RequestContext(request))
     
+

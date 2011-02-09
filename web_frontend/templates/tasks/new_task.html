@@ -49,14 +49,66 @@ Stochastic Simulation
 
 {% block body %}
 
-<p> Select the COPASI model to submit. Before submitting, the model must be correctly configured:
+<p> Select the Copasi model to submit. Before submitting, ensure the model has been correctly configured:
+    {% if type == 'SO' %}
+    
+    <ul>
+        <li>Optimization task:</li>
+        <ul>
+            <li>At least one variable parameter must have been added to the Optimization task</li>
+        </ul>
+        <li>Sensitivites task:</li>
+        <ul>
+            <li>A single object variable must be selected for the Sensitvities task</li>
+        </ul> 
+    </ul>
+    Condor-Copasi will automatically generate the appropriate report; no reports need to be set for any tasks.
+    {% endif %}
+    
+    {% if type == 'PS' %}
+    <ul>
+        <li>Scan task:</li>
+        <ul>
+            <li>Scan task configured as if the run were to take place on a single machine</li>
+            <li>An appropriate report must be set for the Scan task</li>
+        </ul>
+    </ul>
+    Condor-Copasi will automatically split the Scan task into smaller tasks, and execute them parallely. Note that only the first-level scan task will be split; therefore, where possible, ensure that the top-level scan contains the largest number of intervals.
+    {% endif %}
+    
+    {% if type == 'OR' %}
     <ul>
         <li>Optimization task correctly set up</li>
         <li>etc</li>
         <li>TODO</li>
     </ul>
+    {% endif %}
+    
+    {% if type == 'PR' %}
+    <ul>
+        <li>Optimization task correctly set up</li>
+        <li>etc</li>
+        <li>TODO</li>
+    </ul>
+    {% endif %}
+    
+    {% if type == 'SS' %}
+    <ul>
+        <li>Optimization task correctly set up</li>
+        <li>etc</li>
+        <li>TODO</li>
+    </ul>
+    {% endif %}
+    
+    {% if type == 'OD' %}
+    <ul>
+        <li>Optimization task correctly set up</li>
+        <li>etc</li>
+        <li>TODO</li>
+    </ul>
+    {% endif %}
 </p>
-
+<p>Please note - it is very important that the Copasi file is saved using the latest version of Copasi. At present, only Build 33 (version 4.6.33) and Build 34 (version 4.6.34) are supported.
 {% if file_error %}
 <div class="error">
 There was a problem with the file you submitted. Please ensure the guidelines above have been followed.
