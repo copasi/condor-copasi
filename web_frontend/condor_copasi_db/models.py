@@ -44,8 +44,12 @@ class Job(models.Model):
     #The number of runs to do. Only required for some jobs
     runs = models.IntegerField(null=True, blank=True)
     
+    #Set to true after the model has been (un?)successfully submitted.
+    #May seem redundant, but exists to allow multiple unconfirmed jobs with the same name
+    submitted = models.NullBooleanField(null=True)
+    
     class Meta:
-        unique_together = ('user', 'name')
+        unique_together = ('user', 'name', 'submitted')
     
     def __unicode__(self):
         return u'%s: %s' % (self.job_type, self.name)

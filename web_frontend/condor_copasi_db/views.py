@@ -1,6 +1,7 @@
 from django.shortcuts import render_to_response, redirect
 import datetime, os, shutil, re
 from django import forms
+from django.db import IntegrityError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect, HttpResponse
@@ -41,7 +42,7 @@ class UploadModelForm(forms.Form):
         job_name = self.cleaned_data['job_name']
         user = self.request.user
         try:
-            jobs = models.Job.objects.filter(user=user, name=job_name)
+            jobs = models.Job.objects.filter(user=user, name=job_name, submitted=True)
             assert len(jobs)==0            
             return self.cleaned_data['job_name']
         except AssertionError:
@@ -173,6 +174,7 @@ class PlotUpdateForm(forms.Form):
 
 
 class ChangePasswordForm(forms.Form):
+    """Form for allowing a user to change their password. Checks that the old password is valid, and the new passwords match"""
     old_password = forms.CharField(label='Current password',widget=forms.PasswordInput(render_value=False))
     new_password_1 = forms.CharField(label='New password',widget=forms.PasswordInput(render_value=False))
     new_password_2 = forms.CharField(label='New password again',widget=forms.PasswordInput(render_value=False))  
@@ -200,6 +202,7 @@ class ChangePasswordForm(forms.Form):
             raise forms.ValidationError('The new passwords must match')
 @login_required
 def change_password(request):
+    """Displays a form to allow the user to change their password."""
     user = request.user
     pageTitle = 'Change Password'
     submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
@@ -443,7 +446,7 @@ def taskConfirm(request, job_id):
     #Prompt the user for confirmation that the job is set up properly
     #On confirm, submit the job to the database
     try:
-        job = models.Job.objects.get(user=request.user, id=job_id)
+        job = models.Job.objects.get(user=request.user, id=job_id, status='U')
         assert job.status == 'U'
     except AssertionError:
         return web_frontend_views.handle_error(request, 'Error Confirming Job',['The current job has already been confirmed'])
@@ -462,6 +465,8 @@ def taskConfirm(request, job_id):
 
                 #Mark the job as confirmed
                 job.status = 'N'
+                #And submitted
+                job.submitted=True
                 job.last_update = datetime.datetime.today()
                 job.save()
 
@@ -469,8 +474,10 @@ def taskConfirm(request, job_id):
                 request.session['message'] = 'Job succesfully sumbitted.'
 
                 return HttpResponseRedirect('/tasks/')
+            except IntegrityError:
+                job.delete()
+                return web_frontend_views.handle_error(request, 'There was a problem submitting the job.',['The job was not submitted to condor', 'Please try again'])
             except:
-                raise
                 job.delete()
                 return web_frontend_views.handle_error(request, 'An error occured preparing temporary files',['The job was not submitted to condor'])
                 
@@ -619,7 +626,7 @@ def jobDetails(request, job_name):
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
 
@@ -657,7 +664,7 @@ def jobRemove(request, job_name):
     completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
     error_count = len(models.Job.objects.filter(user=request.user, status='E'))
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
 
@@ -696,7 +703,7 @@ def jobOutput(request, job_name):
     job_remove_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
     
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
         
@@ -752,21 +759,28 @@ def jobOutput(request, job_name):
             img_string += '&grid=true'
     
     elif job.job_type == 'OR':
-        output = model.get_or_best_value()
-        
-        best_value = output[0][1]
-        parameters = output[1:]
+        try:
+            output = model.get_or_best_value()
+            best_value = output[0][1]
+            parameters = output[1:]
+        except:
+            return web_frontend_views.handle_error(request, 'Error Reading Results',['An error occured while trying to processs the job output. You may be able to recover any raw, unprocessed results by downloading the job directory.'])
     elif job.job_type == 'PR':
-        output = model.get_pr_best_value()
-        
-        best_value = output[0][1]
-        parameters = output[3:]
+        try:
+            output = model.get_pr_best_value()
+            best_value = output[0][1]
+            parameters = output[3:]
+        except:
+            return web_frontend_views.handle_error(request, 'Error Reading Results',['An error occured while trying to processs the job output. You may be able to recover any raw, unprocessed results by downloading the job directory.'])
         
     elif job.job_type == 'OD':
-        output = model.get_od_results()
-        
-        best_value = output[1][1]
-        
+        try:
+            output = model.get_od_results()
+            best_value = output[1][1]
+        except:
+            return web_frontend_views.handle_error(request, 'Error Reading Results',['An error occured while trying to processs the job output. You may be able to recover any raw, unprocessed results by downloading the job directory.'])
+            
+            
     pageTitle = 'Job Output: ' + str(job.name)
     return render_to_response('my_account/job_output.html', locals(), RequestContext(request))
   
@@ -775,7 +789,7 @@ def jobOutput(request, job_name):
 def jobResultDownload(request, job_name):
     """Return the file containing the job results file"""
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
     try:
@@ -797,7 +811,7 @@ def jobDownload(request, job_name):
     """Generate a tar.gz file of the results directory, and return it"""
     #Check to see if the tar.gz file exists already, if not create it
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
     try:
@@ -822,7 +836,7 @@ def ss_plot(request, job_name):
     """Return the plot image for the results from a stochastic simulation"""
     import numpy as np
     try:
-        job = models.Job.objects.get(user=request.user, name=job_name)
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
         return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
     try:

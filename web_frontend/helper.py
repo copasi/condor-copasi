@@ -233,3 +233,12 @@ for job in complete:
 #Go through completed jobs, and remove anything older than settings.COMPLETED_JOB_DAYS
 if settings.COMPLETED_JOB_REMOVAL_DAYS >0:
     pass
+    
+    
+########
+#Remove any unconfirmed jobs older than 30 mins
+unconfirmed = models.Job.objects.filter(status='U')
+
+for job in unconfirmed:
+    if datetime.datetime.today() - job.submission_time > datetime.timedelta(minutes=30):
+        job.delete()
