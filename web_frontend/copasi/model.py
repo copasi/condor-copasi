@@ -668,6 +668,23 @@ class CopasiModel:
         temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
         tempdir, rel_filename = os.path.split(temp_filename)
         
+        ############
+        #Create a new report for the ss task
+        report_key = 'condor_copasi_stochastic_simulation_report'
+        self.__create_report('SS', report_key)
+        
+        #And set the new report for the ss task
+        report = scanTask.find(xmlns + 'Report')
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            scanTask.insert(0,report)
+        
+        report.set('reference', report_key)
+        report.set('append', '1')
+        report.set('target', 'temp_output.txt')
+        
         self.model.write(temp_filename)
         
         #Note the start time
@@ -693,25 +710,11 @@ class CopasiModel:
 
         scanTask = self.__getTask('scan')
         
-        #And set it scheduled to run, and to not update the model
+        #And set it scheduled to run, and to update the model
         scanTask.attrib['scheduled'] = 'true'
-        scanTask.attrib['updateModel'] = 'false'
+        scanTask.attrib['updateModel'] = 'true'
  
-        ############
-        #Create a new report for the ss task
-        report_key = 'condor_copasi_stochastic_simulation_report'
-        self.__create_report('SS', report_key)
-        
-        #And set the new report for the ss task
-        report = scanTask.find(xmlns + 'Report')
-    
-        #If no report has yet been set, report == None. Therefore, create new report
-        if report == None:
-            report = etree.Element(xmlns + 'Report')
-            scanTask.insert(0,report)
-        
-        report.set('reference', report_key)
-        report.set('append', '1')
+
 
         #Set the XML for the problem task as follows:
 #        """<Parameter name="Subtask" type="unsignedInteger" value="1"/>
@@ -1004,6 +1007,7 @@ queue\n""")
         #Benchmarking
         ############
         #Measure the time taken to run a single run of the first-level scan
+        report.attrib['target'] = 'temp_output.txt'
         import tempfile
         #Set the number of steps as 1, and write a temp XML file
         
@@ -1061,7 +1065,8 @@ queue\n""")
         ##############
         #Job preparation
         ##############
-        
+        #Set the model to update
+        scanTask.attrib['updateModel'] = 'true'
         #First, deal with the easy case -- where the top-level item is a repeat.
 
         if task_type == 0:
@@ -1225,6 +1230,7 @@ queue\n""")
         #Get the scan task
         scanTask = self.__getTask('scan')
         scanTask.attrib['scheduled'] = 'true'
+        scanTask.attrib['updateModel'] = 'true'
         
         #Remove the report output for the optTask to avoid any unwanted output when running the scan task
         optReport.attrib['target'] = ''
@@ -1509,7 +1515,7 @@ queue\n""")
         #Get the scan task
         scanTask = self.__getTask('scan')
         scanTask.attrib['scheduled'] = 'true'
-        
+        scanTask.attrib['updateModel'] = 'true'
         #Set the new report for the scan task
         report = scanTask.find(xmlns + 'Report')
     
@@ -1724,8 +1730,11 @@ queue\n""")
         """Prepare the jobs for the optimization with different algorithms task
         
         algorithms is a dict containing the form instance from newTask() in views.py"""
-        
+        self.__clear_tasks()
         optTask = self.__getTask('optimization')
+        optTask.attrib['scheduled'] = 'true'
+        optTask.attrib['updateModel'] = 'true'
+        
         #Create a new report for the or task
         report_key = 'condor_copasi_optimization_report'
         self.__create_report('OR', report_key)
