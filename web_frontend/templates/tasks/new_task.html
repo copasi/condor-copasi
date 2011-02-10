@@ -64,11 +64,11 @@ function selectall(select){
     {% if type == 'SO' %}
     
     <ul class="job_details">
-        <li>Optimization task:</li>
+        <li><b>Optimization task:</b></li>
         <ul>
             <li>At least one variable parameter must have been added to the Optimization task</li>
         </ul>
-        <li>Sensitivites task:</li>
+        <li><b>Sensitivites task:</b></li>
         <ul>
             <li>A single object variable must be selected for the Sensitvities task</li>
         </ul> 
@@ -78,7 +78,7 @@ function selectall(select){
     
     {% if type == 'PS' %}
     <ul class="job_details">
-        <li>Scan task:</li>
+        <li><b>Scan task:</b></li>
         <ul>
             <li>The Scan task should be configured as if the run were to take place on a single machine</li>
             <li>An appropriate report must be set for the Scan task</li>
@@ -89,7 +89,7 @@ function selectall(select){
     
     {% if type == 'OR' %}
     <ul class="job_details">
-        <li>Optimization task:</li>
+        <li><b>Optimization task:</b></li>
         <ul>
         <li>At least one variable parameter must have been added to the optimization task</li>
         <li>A valid objective expression must have been set</li>
@@ -100,11 +100,11 @@ function selectall(select){
     
     {% if type == 'PR' %}
     <ul class="job_details">
-        <li>Parameter Estimation task</li>
+        <li><b>Parameter Estimation task</b></li>
         <ul>
         <li>At least one variable parameter must have been added to the Parameter Estimation task</li>
         <li>Any experimental data files must have been selected and configured</li>
-        <li>Note, all experimental data files must be located in the same directory as the model <tt>.CPS</tt> file</li>
+        <li>Note, all experimental data files must be placed in the same directory as the model <tt>.CPS</tt> file prior to setting up the Parameter Estimation task</li>
         </ul>
     </ul>
     Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Parameter Estimation task.
@@ -112,7 +112,7 @@ function selectall(select){
     
     {% if type == 'SS' %}
     <ul class="job_details">
-        <li>Time Course task:</li>
+        <li><b>Time Course task:</b></li>
         <ul>
         <li>The Time Course should be set up as if a single run were to take place on the local machine</li>
         <li>An appropriate stochastic method must be selected</li>
@@ -123,7 +123,7 @@ function selectall(select){
     
     {% if type == 'OD' %}
     <ul class="job_details">
-        <li>Optimization task:</li>
+        <li><b>Optimization task:</b></li>
         <ul>
         <li>At least one variable parameter must have been added to the optimization task</li>
         <li>A valid objective expression must have been set</li>
@@ -132,7 +132,9 @@ function selectall(select){
     Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Optimization task.
     {% endif %}
 </p>
-<p>Please note - it is very important that the Copasi file is saved using the latest version of Copasi. At present, only Build 33 (version 4.6.33) and Build 34 (version 4.6.34) are supported.
+
+
+<p><b>Please note - it is very important that the Copasi file is saved using a supported version of Copasi. At present, only Build 33 (version 4.6.33) and Build 34 (version 4.6.34) are supported.</b></p>
 {% if file_error %}
 <div class="error">
 There was a problem with the file you submitted. Please ensure the guidelines above have been followed.
