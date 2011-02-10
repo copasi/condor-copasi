@@ -34,6 +34,7 @@ class CopasiModel:
         return self.name
         
     def is_valid(self, job_type):
+        """Check if the model has been correctly set up for a particular condor-copasi task"""
         if job_type == 'SO':
             #Check that a single object has been set for the sensitivities task:
             if self.get_sensitivities_object() == '':
@@ -77,6 +78,9 @@ class CopasiModel:
             #Check that at least one parameter has been set
             if len(self.get_optimization_parameters()) == 0:
                 return 'No parameters have been set for the optimization task'
+            #Check that an object has been set for the sensitivities task
+            if self.__get_optimization_object() == '':
+                return 'No objective expression has been set for the optimization task'
             return True
         elif job_type == 'PR':
             #Check that at least one parameter has been set
@@ -167,6 +171,14 @@ class CopasiModel:
             if search:
                 value_string = search.group('name')
         return value_string
+      
+    def __get_optimization_object(self):
+        """Returns the objective expression for the optimization task"""
+        optTask = self.__getTask('optimization')
+        optProblem = optTask.find(xmlns + 'Problem')
+        parameterText = optProblem.find(xmlns + 'ParameterText')
+        return parameterText.text.strip()
+      
             
     def get_optimization_parameters(self, friendly=True):
         """Returns a list of the parameter names to be included in the sensitvitiy optimization task. Will optionally process names to make them more user friendly"""

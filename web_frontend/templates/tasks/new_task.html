@@ -63,7 +63,7 @@ function selectall(select){
 <p> Select the Copasi model to submit. Before submitting, ensure the model has been correctly configured:
     {% if type == 'SO' %}
     
-    <ul>
+    <ul class="job_details">
         <li>Optimization task:</li>
         <ul>
             <li>At least one variable parameter must have been added to the Optimization task</li>
@@ -77,46 +77,59 @@ function selectall(select){
     {% endif %}
     
     {% if type == 'PS' %}
-    <ul>
+    <ul class="job_details">
         <li>Scan task:</li>
         <ul>
-            <li>Scan task configured as if the run were to take place on a single machine</li>
+            <li>The Scan task should be configured as if the run were to take place on a single machine</li>
             <li>An appropriate report must be set for the Scan task</li>
         </ul>
     </ul>
-    Condor-Copasi will automatically split the Scan task into smaller tasks, and execute them parallely. Note that only the first-level scan task will be split; therefore, where possible, ensure that the top-level scan contains the largest number of intervals.
+    Condor-Copasi will automatically split the Scan task into smaller tasks, and execute them in parallel. Note that, where nested scans have been set, only the first-level scan will be split; therefore, where possible, ensure that the top-level scan contains the largest number of intervals.
     {% endif %}
     
     {% if type == 'OR' %}
-    <ul>
-        <li>Optimization task correctly set up</li>
-        <li>etc</li>
-        <li>TODO</li>
+    <ul class="job_details">
+        <li>Optimization task:</li>
+        <ul>
+        <li>At least one variable parameter must have been added to the optimization task</li>
+        <li>A valid objective expression must have been set</li>
+        </ul>
     </ul>
+    Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Optimization task.
     {% endif %}
     
     {% if type == 'PR' %}
-    <ul>
-        <li>Optimization task correctly set up</li>
-        <li>etc</li>
-        <li>TODO</li>
+    <ul class="job_details">
+        <li>Parameter Estimation task</li>
+        <ul>
+        <li>At least one variable parameter must have been added to the Parameter Estimation task</li>
+        <li>Any experimental data files must have been selected and configured</li>
+        <li>Note, all experimental data files must be located in the same directory as the model <tt>.CPS</tt> file</li>
+        </ul>
     </ul>
+    Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Parameter Estimation task.
     {% endif %}
     
     {% if type == 'SS' %}
-    <ul>
-        <li>Optimization task correctly set up</li>
-        <li>etc</li>
-        <li>TODO</li>
+    <ul class="job_details">
+        <li>Time Course task:</li>
+        <ul>
+        <li>The Time Course should be set up as if a single run were to take place on the local machine</li>
+        <li>An appropriate stochastic method must be selected</li>
+        </ul>
     </ul>
+    Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Time Course task.
     {% endif %}
     
     {% if type == 'OD' %}
-    <ul>
-        <li>Optimization task correctly set up</li>
-        <li>etc</li>
-        <li>TODO</li>
+    <ul class="job_details">
+        <li>Optimization task:</li>
+        <ul>
+        <li>At least one variable parameter must have been added to the optimization task</li>
+        <li>A valid objective expression must have been set</li>
+        </ul>
     </ul>
+    Condor-Copasi will automatically generate an appropriate report; no report needs to be set for the Optimization task.
     {% endif %}
 </p>
 <p>Please note - it is very important that the Copasi file is saved using the latest version of Copasi. At present, only Build 33 (version 4.6.33) and Build 34 (version 4.6.34) are supported.

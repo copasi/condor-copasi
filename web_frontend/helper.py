@@ -223,17 +223,19 @@ for job in waiting:
         #raise
         
         
-complete = models.Job.objects.filter(status='C')
 
-for job in complete:
-    model = CopasiModel(job.get_filename())
     
     
 ############
-#Go through completed jobs, and remove anything older than settings.COMPLETED_JOB_DAYS
+#Go through completed jobs or jobs with errors, and remove anything older than settings.COMPLETED_JOB_REMOVAL_DAYS
+complete = models.Job.objects.filter(status='C') | models.Job.objects.filter(status='E')
 if settings.COMPLETED_JOB_REMOVAL_DAYS >0:
-    pass
-    
+    for job in complete:
+        try:
+            if datetime.datetime.today() - job.finish_time > datetime.timedelta(days=settings.COMPLETED_JOB_REMOVAL_DAYS):
+                job.delete()
+        except:
+            pass
     
 ########
 #Remove any unconfirmed jobs older than 30 mins
