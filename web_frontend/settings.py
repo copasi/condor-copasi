@@ -1,5 +1,7 @@
 # Django settings for web_frontend project.
 import os.path
+import logging
+
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -111,6 +113,10 @@ FILE_UPLOAD_HANDLERS= ("django.core.files.uploadhandler.TemporaryFileUploadHandl
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
 USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
+
+LOG_FILE = os.path.join(os.path.dirname(__file__), 'condor-copasi-log.txt')
+#Set the logging level. Either logging.DEBUG or logging.ERROR
+LOG_LEVEL = logging.DEBUG
 
 COPASI_BINARY_DIR = '/home/ed/bin/condor_files/'
 COPASI_LOCAL_BINARY = os.path.join(COPASI_BINARY_DIR, 'CopasiSE.LINUX.X86_64')

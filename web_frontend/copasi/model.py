@@ -674,16 +674,16 @@ class CopasiModel:
         self.__create_report('SS', report_key)
         
         #And set the new report for the ss task
-        report = scanTask.find(xmlns + 'Report')
+        timeReport = timeTask.find(xmlns + 'Report')
     
         #If no report has yet been set, report == None. Therefore, create new report
-        if report == None:
-            report = etree.Element(xmlns + 'Report')
-            scanTask.insert(0,report)
+        if timeReport == None:
+            timeReport = etree.Element(xmlns + 'Report')
+            timeTask.insert(0,timeReport)
         
-        report.set('reference', report_key)
-        report.set('append', '1')
-        report.set('target', 'temp_output.txt')
+        timeReport.set('reference', report_key)
+        timeReport.set('append', '1')
+        timeReport.set('target', 'temp_output.txt')
         
         self.model.write(temp_filename)
         
@@ -707,15 +707,24 @@ class CopasiModel:
 
         #First clear the task list, to ensure that no tasks are set to run
         self.__clear_tasks()
-
+        
         scanTask = self.__getTask('scan')
         
         #And set it scheduled to run, and to update the model
         scanTask.attrib['scheduled'] = 'true'
         scanTask.attrib['updateModel'] = 'true'
  
+        #Set up the appropriate report for the scan task, and clear the report for the time course task
+        timeReport.attrib['target'] = ''
 
-
+        report = scanTask.find(xmlns + 'Report')
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            scanTask.insert(0,report)
+        
+        report.set('reference', report_key)
+        report.set('append', '1')
+        
         #Set the XML for the problem task as follows:
 #        """<Parameter name="Subtask" type="unsignedInteger" value="1"/>
 #        <ParameterGroup name="ScanItems">
@@ -851,7 +860,7 @@ transfer_input_files = ${raw_results}
 log =  results.log  
 error = results.err
 output = results.out
-Requirements = ( OpSys == "LINUX" && HAS_PYTHON26 == True)  && (Memory > 0 ) && (Machine != "e-cskc38c04.eps.manchester.ac.uk") && (machine != "localhost.localdomain")
+Requirements = ( OpSys == "LINUX" || OpSys=="OSX") && ( Arch=="X86_64" || Arch=="INTEL" ) && (HAS_PYTHON26 == True) && (machine != "localhost.localdomain")
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 queue\n""")

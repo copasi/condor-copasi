@@ -654,7 +654,7 @@ def jobDetails(request, job_name):
                 log = condor_log.Log(log_file)
                 total_cpu_time += log.remote_usage_time
             except:
-                raise
+                pass
     
     return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
     

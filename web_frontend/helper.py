@@ -3,6 +3,7 @@ from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel
 from web_frontend import settings
 import subprocess, os, re, datetime
+import logging
 
 def condor_submit(condor_file):
     """Submit the .job file condor_file to the condor system using the condor_submit command"""
@@ -18,11 +19,16 @@ def condor_submit(condor_file):
     
     return process_id
 
+
+#Set up logging, with the appropriate log level
+logging.basicConfig(filename=settings.LOG_FILE,level=settings.LOG_LEVEL, format='%(asctime)s::%(levelname)s::%(message)s', datefmt='%Y-%m-%d, %H:%M:%S')
+
 #Step one, load the jobs that have been confirmed, and need submitting to condor :
 
 new_jobs = models.Job.objects.filter(status='N')
 
 for job in new_jobs:
+    logging.debug('New job found: ' + str(job.id) + ', user: ' + str(job.user))
     try:
         #Load the model
         model = CopasiModel(job.get_filename())
@@ -56,13 +62,14 @@ for job in new_jobs:
                 condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                 condor_job.save()
             except:
-                print 'Error submitting to condor. Check the condor scheduler service is running.'#TODO: pass to log file
-            
+                logging.error('Error submitting job(s) to Condor; ensure condor scheduler service is running. Job: ' + str(job.id)  + ', User: ' + str(job.user))
+        logging.debug('Submitted ' + str(len(condor_jobs)) + ' to Condor')
         job.status = 'S'
         job.last_update=datetime.datetime.today()
         job.save()
-    except:
-        #raise
+    except Exception, e:
+        logging.warning('Error preparing job for condor submission. Job: ' + str(job.id) + ', User: ' + str(job.user))
+        logging.warning('Exception: ' + str(e))
         job.status = 'E'
         job.last_update=datetime.datetime.today()
         job.finish_time=datetime.datetime.today()
@@ -93,6 +100,10 @@ try:
 
     #Now, go through all jobs that, at the last update, had been submitted (status = 'Q'|'R'|'H'|'I')
     submitted_jobs = models.CondorJob.objects.filter(queue_status='Q') | models.CondorJob.objects.filter(queue_status='R') | models.CondorJob.objects.filter(queue_status='I') | models.CondorJob.objects.filter(queue_status='H')
+
+    if len(submitted_jobs) > 0:
+        logging.debug('Checking condor_q status. ' + str(len(submitted_jobs)) + ' running jobs may be in queue')
+    
     #Check to see if each of these jobs is in the condor_q output
     for submitted_job in submitted_jobs:
         found=False
@@ -107,8 +118,9 @@ try:
         if not found:
             submitted_job.queue_status = 'F'
             submitted_job.save()            
-except:
-    print 'Error processing condor_q output. Ensure the condor scheduler service is running'#TODO:pass to log
+except Exception, e:
+    logging.error('Error processing condor_q output. Ensure the condor scheduler service is running')
+    logging.error('Exception: ' + str(e))
 ############
 
 #Go through each of the model.Jobs with status 'S' (submitted) or 'X'(processing data on condor), and look at each of its child CondorJobs. If all have finished, mark the Job as 'W' (finished, waiting for processing). If any CondorJobs have been held ('H'), mark the Job as Error ('E')
@@ -125,14 +137,17 @@ for job in submitted_jobs:
                 still_running = True
                 break
             elif condor_job.queue_status == 'H':
+                logging.warning('Condor job id ' + str(condor_job.queue_id) + ' held')
                 error = True
                 break
         if error:
+            logging.warning('Job: ' + str(job.id) + ', User: ' + str(job.user) + ' did not complete successfully')
             job.status='E'
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
             job.save()
         elif not still_running:
+            logging.debug('Job ' + str(job.id) + ', User: ' + str(job.user) + ' finished processing on condor')
             if job.status == 'X':
                 #If the second stage of condor processing has finished, mark the job as complete
                 job.status='C'
@@ -147,7 +162,8 @@ for job in submitted_jobs:
             job.last_update=datetime.datetime.today()
             job.save()
     except:
-        pass
+        logging.warning('Error preparing job for condor submission. Job: ' + str(job.id) + ', User: ' + str(job.user))
+        logging.warning('Exception: ' + str(e))
 ############
 
 #Collate the results
@@ -155,6 +171,7 @@ for job in submitted_jobs:
 #Get the list of jobs marked as finished, waiting for processing
 waiting = models.Job.objects.filter(status='W')
 for job in waiting:
+    logging.debug('Processing results for complete job ' + str(job.id) + ', User: ' + str(job.user))
     try:
         model = CopasiModel(job.get_filename())
         if job.job_type == 'SO':
@@ -214,13 +231,14 @@ for job in waiting:
             job.last_update = datetime.datetime.today()
             job.finish_time = datetime.datetime.today()
             job.save()
-    except:
+    except Exception, e:
+        logging.warning('Error processing results for job ' + str(job.id) + ', User: ' + str(job.user))
+        logging.warning('Exception: ' + str(e))
         job.status='E'
         job.finish_time=datetime.datetime.today()
         job.last_update=datetime.datetime.today()
         job.save()
-        print 'Error processing job ' + str(job.name)
-        #raise
+
         
         
 
@@ -233,9 +251,11 @@ if settings.COMPLETED_JOB_REMOVAL_DAYS >0:
     for job in complete:
         try:
             if datetime.datetime.today() - job.finish_time > datetime.timedelta(days=settings.COMPLETED_JOB_REMOVAL_DAYS):
+                logging.debug('Removing old job ' + str(job.id) + ', User: ' + str(job.user))
                 job.delete()
-        except:
-            pass
+        except Exception, e:
+            logging.warning('Error removing old job ' + str(job.id) + ', User: ' + str(job.user))
+            logging.warning('Exception: ' + str(e))
     
 ########
 #Remove any unconfirmed jobs older than 30 mins
@@ -243,4 +263,5 @@ unconfirmed = models.Job.objects.filter(status='U')
 
 for job in unconfirmed:
     if datetime.datetime.today() - job.submission_time > datetime.timedelta(minutes=30):
+        logging.debug('Removing old unconfirmed job ' + str(job.id) + ', User: ' + str(job.user))
         job.delete()

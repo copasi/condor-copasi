@@ -100,6 +100,6 @@ class CondorJob(models.Model):
         """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
         if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
             import subprocess
-            p = subprocess.Popen('condor_rm', self.queue_id)
-            p.comminucate()
+            p = subprocess.Popen(['condor_rm', str(self.queue_id)])
+            p.communicate()
         super(CondorJob, self).delete(*args, **kwargs)
