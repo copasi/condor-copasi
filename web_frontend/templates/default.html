@@ -5,7 +5,7 @@
 <title>
 Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
-<link rel="stylesheet" type="text/css" href="http://{{ request.get_host }}/static/style.css" /> 
+<link rel="stylesheet" type="text/css" href="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css" /> 
 {%block head%}
 {% endblock %}
 </head>
@@ -19,26 +19,26 @@ Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
             </div>
             <div id="user_tools">
                 {% if user.is_authenticated %}
-                Welcome <b> {{ user.username }} </b> | <a href="http://{{request.get_host}}/logout">Logout</a>
+                Welcome <b> {{ user.username }} </b> | <a href="{% url web_frontend.views.logoutPage %}">Logout</a>
                 {% else %}
-                <a href="http://{{request.get_host}}/login">Login</a>
+                <a href="{% url web_frontend.views.loginPage %}">Login</a>
                 {% endif %}
             </div>
             <div class="clear"></div>
         </div>
         <div id="breadcrumbs">
-            <a href="http://{{request.get_host}}/">Home</a> &gt;&gt;
+            <a href="{% url web_frontend.views.mainPage %}">Home</a> &gt;&gt;
             {% block breadcrumbs_l2 %}{% endblock %}
         </div>
         <div id="main">
             <div id="sidebar">
             {% block sidebar %}
                 <ul>
-                    <li><a href="http://{{request.get_host}}/">Home</a></li>
+                    <li><a href="{% url web_frontend.views.mainPage %}">Home</a></li>
                     {% if user.is_authenticated %}
-                    <li><a href="http://{{request.get_host}}/my_account/">My Account</a></li>
+                    <li><a href="{% url web_frontend.condor_copasi_db.views.myAccount %}">My Account</a></li>
                     {% block accountlist %}{% endblock %}
-                    <li><a href="http://{{request.get_host}}/tasks">Tasks</a></li>
+                    <li><a href="{% url web_frontend.condor_copasi_db.views.tasks %}">Tasks</a></li>
                     {% block tasklist %}{% endblock %}
                     {%endif%}
                     <li>Help</li>

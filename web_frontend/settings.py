@@ -105,11 +105,12 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 'django.core.context_processors.auth',
 'django.core.context_processors.debug',
 'django.core.context_processors.i18n',
+'context_processors.folder_urls',
 )
 
 FILE_UPLOAD_HANDLERS= ("django.core.files.uploadhandler.TemporaryFileUploadHandler",)
 
-
+SITE_SUBFOLDER = '/test/'
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
 USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')

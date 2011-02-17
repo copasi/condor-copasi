@@ -2,16 +2,16 @@
 
 {% block breadcrumbs_l3 %}
 {% if job.status == 'C' %}
-<a href="http://{{request.get_host}}/my_account/jobs/completed">Completed Jobs</a> &gt;&gt;
+<a href="{% url completed_jobs %}">Completed Jobs</a> &gt;&gt;
 {% endif %}
 {% if job.status == 'N' or job.status == 'S' or job.status == 'W' %}
-<a href="http://{{request.get_host}}/my_account/jobs/completed">New and Submitted Jobs</a> &gt;&gt;
+<a href="{% url running_jobs%}">New and Submitted Jobs</a> &gt;&gt;
 {% endif %}
 {% if job.status == 'E' %}
-<a href="http://{{request.get_host}}/my_account/jobs/completed">Job Errors</a> &gt;&gt;
+<a href="{% url job_errors %}">Job Errors</a> &gt;&gt;
 {% endif %}
 
-<a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+<a href="{% url job_details job.name %}">{{job.name}}</a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
 
@@ -21,10 +21,10 @@
 <b>This job has completed.</b>
 <ul class="job_details">
 {% if job.job_type == 'SO' or job.job_type == 'SS' or job.job_type == 'OR' or job.job_type == 'PR' or job.job_type == 'OD' %}
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/output/">View</a></b> the results</li>
+    <li><b><a href="{% url job_output job.name %}">View</a></b> the results</li>
 {% endif %}
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/save/">Download</a></b> the results</li>
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
+    <li><b><a href="{% url job_save job.name %}">Download</a></b> the results</li>
+    <li><b><a href="{% url job_download job.name %}">Download</a></b> the directory containing the output files</li>
 </ul>
 </div>
 {% endif %}
@@ -43,7 +43,7 @@
 {% endif %}
 
 <ul class="job_details">
-    <li><b><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/download/">Download</a></b> the directory containing the output files</li>
+    <li><b><a href="{% url job_download job.name %}">Download</a></b> the directory containing the output files</li>
 </ul>
 </div>
 {% endif %}
@@ -84,7 +84,7 @@ All jobs are stored on the system for <b>{{job_removal_days}} day{%if job_remova
 <p>This job will be removed in <b>{{job_removal_date|timeuntil}} ({{job_removal_date}})</b>.</p>
 <p>Alternatively, you can remove the job now:</p>
 
-<form action="remove/" method="get">
+<form action="{% url job_remove job.name %}" method="get">
     <input type="submit" value="Remove">
 </form>
 

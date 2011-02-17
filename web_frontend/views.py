@@ -6,7 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
-    
+from web_frontend import settings
+
 def mainPage(request):
     pageTitle = 'Home'
     return render_to_response('index.html', locals(), RequestContext(request))
@@ -18,7 +19,7 @@ class LoginForm(forms.Form):
 
 def loginPage(request):
     if request.user.is_authenticated():
-        return HttpResponseRedirect('/')
+        return HttpResponseRedirect(settings.SITE_SUBFOLDER)
     login_failure = False
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -33,7 +34,7 @@ def loginPage(request):
                 try:
                     return HttpResponseRedirect(request.GET['next'])
                 except:
-                    return HttpResponseRedirect('/')
+                    return HttpResponseRedirect(settings.SITE_SUBFOLDER)
             else:
                 #Login unsuccsessful
                 login_failure = True
@@ -47,11 +48,8 @@ def loginPage(request):
 def logoutPage(request):
     #Logout
     logout(request)
-    return HttpResponseRedirect('/')
+    return HttpResponseRedirect(settings.SITE_SUBFOLDER)
     
-@login_required
-def restricted(request):
-    return HttpResponseRedirect('/')
     
 def handle_error(request, pageTitle, errors=[]):
     return render_to_response('500.html', locals(), context_instance=RequestContext(request))

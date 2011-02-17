@@ -1,13 +1,13 @@
 {% extends "default.html" %}
 
-{% block breadcrumbs_l2 %} <a href="http://{{request.get_host}}/my_account/">My Account</a> &gt;&gt; {% block breadcrumbs_l3 %}{%endblock%}{%endblock%}
+{% block breadcrumbs_l2 %} <a href="{% url my_account %}">My Account</a> &gt;&gt; {% block breadcrumbs_l3 %}{%endblock%}{%endblock%}
 
 {% block accountlist %}
 <ul>
-    <li><a href="http://{{request.get_host}}/my_account/jobs/running">Running Jobs <b>({{submitted_job_count}})</b></a></li>
-    <li><a href="http://{{request.get_host}}/my_account/jobs/completed">Completed Jobs <b>({{completed_job_count}})</b></a></li>
-    <li><a href="http://{{request.get_host}}/my_account/jobs/errors">Errors <b>({{error_count}})</b></a></li>
-    <li><a href="http://{{request.get_host}}/my_account/change_password">Change password</a></li>
+    <li><a href="{% url running_jobs %}">Running Jobs <b>({{submitted_job_count}})</b></a></li>
+    <li><a href="{% url completed_jobs %}">Completed Jobs <b>({{completed_job_count}})</b></a></li>
+    <li><a href="{% url job_errors %}">Errors <b>({{error_count}})</b></a></li>
+    <li><a href="{% url change_password %}">Change password</a></li>
 </ul>
 {% endblock %}
 

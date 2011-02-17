@@ -39,22 +39,22 @@ function selectall(select){
 
 {% block breadcrumbs_l3 %}
 {% if type == "SO" %} 
-<a href="http://{{request.get_host}}/tasks/new/sensitivity_optimization">Sensitivity Optimization</a>
+<a href="{% url new_SO %}">Sensitivity Optimization</a>
 {%endif%}
 {% if type == "SS" %}
-<a href="http://{{request.get_host}}/tasks/new/stochastic_simulation">Stochastic Simulation</a>
+<a href="{% url new_SS %}">Stochastic Simulation</a>
 {% endif %}
 {% if type == "PS" %}
-<a href="http://{{request.get_host}}/tasks/new/parallel_scan">Parallel Scan</a>
+<a href="{% url new_PS %}">Parallel Scan</a>
 {% endif %}
 {% if type == "OR" %}
-<a href="http://{{request.get_host}}/tasks/new/optimization_repeat">Optimization Repeat</a>
+<a href="{% url new_OR %}">Optimization Repeat</a>
 {% endif %}
 {% if type == "PR" %}
-<a href="http://{{request.get_host}}/tasks/new/parameter_estimation_repeat">Parameter Estimation Repeat</a>
+<a href="{% url new_PR %}">Parameter Estimation Repeat</a>
 {% endif %}
 {% if type == "OD" %}
-<a href="http://{{request.get_host}}/tasks/new/optimization_repeat_different_algorithms">Optimization Repeat with Different Algorithms</a>
+<a href="{% url new_OD %}">Optimization Repeat with Different Algorithms</a>
 {% endif %}
 &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 

@@ -1,6 +1,6 @@
 {% extends "my_account/my_account.html" %}
 
-{% block breadcrumbs_l3 %} <a href="http://{{request.get_host}}/my_account/jobs/completed/">Completed Jobs</a> &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+{% block breadcrumbs_l3 %} <a href="{% url completed_jobs %}">Completed Jobs</a> &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
 
@@ -23,7 +23,7 @@
     {% for job, condor_jobs in jobs %}
 
     <tr>
-        <td><a href="http://{{request.get_host}}/my_account/jobs/details/{{job.name}}/">{{job.name}}</a></td>
+        <td><a href="{% url job_details job.name %}">{{job.name}}</a></td>
         <td>{{job.get_job_type_display}}</td>
         <td>{% if job.runs != None %}{{job.runs}}{% endif %}</td>
         <td>{{condor_jobs|length}}</td>
