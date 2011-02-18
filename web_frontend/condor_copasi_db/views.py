@@ -12,9 +12,7 @@ from web_frontend import settings, condor_log
 from web_frontend.condor_copasi_db import models
 from web_frontend import views as web_frontend_views
 from web_frontend.copasi.model import CopasiModel
-
-#Define the (optional) subfolder from settings
-subfolder = settings.SITE_SUBFOLDER.rstrip('/')
+from django.core.urlresolvers import reverse
 
 #Generic function for saving a django UploadedFile to a destination
 def handle_uploaded_file(f,destination):
@@ -221,7 +219,7 @@ def change_password(request):
             user.set_password(form.cleaned_data['new_password_1'])
             user.save()
             request.session['message'] = 'Password successfully changed'
-            return HttpResponseRedirect(subfolder + '/my_account/')
+            return HttpResponseRedirect(reverse('my_account'))
     else:
         form = ChangePasswordForm(request=request)
     return render_to_response('my_account/change_password.html', locals(), context_instance=RequestContext(request))
@@ -428,7 +426,7 @@ def newTask(request, type):
                         model = CopasiModel(destination)
                         model.prepare_od_jobs(algorithms)
                             
-                    return HttpResponseRedirect(subfolder + '/tasks/new/confirm/' + str(job.id))
+                    return HttpResponseRedirect(reverse('confirm_task', args=[str(job.id)]))
             except:
                 raise
                 file_error = 'The submitted file is not a valid Copasi xml file'
@@ -476,7 +474,7 @@ def taskConfirm(request, job_id):
                 #Store a message stating that the job was successfully confirmed
                 request.session['message'] = 'Job succesfully sumbitted.'
 
-                return HttpResponseRedirect(subfolder + '/tasks/')
+                return HttpResponseRedirect(reverse('tasks_home'))
             except IntegrityError:
                 job.delete()
                 return web_frontend_views.handle_error(request, 'There was a problem submitting the job.',['The job was not submitted to condor', 'Please try again'])
@@ -487,7 +485,7 @@ def taskConfirm(request, job_id):
         
         elif 'cancel_job' in request.POST:
             job.delete()
-            return HttpResponseRedirect(subfolder + '/tasks/')
+            return HttpResponseRedirect(reverse('tasks_home'))
 
     
     job_filename = job.get_filename()
@@ -689,11 +687,11 @@ def jobRemove(request, job_name):
                 job_name = job.name
                 job.delete()
                 request.session['message'] = 'Job ' + str(job_name) + ' removed.'
-                return HttpResponseRedirect(subfolder + '/my_account/')
+                return HttpResponseRedirect(reverse('my_account'))
             except:
                 return web_frontend_views.handle_error(request, 'Error Removing Job',[])
         else:
-            return HttpResponseRedirect(subfolder + '/my_account/jobs/details/' + str(job.name))
+            return HttpResponseRedirect(reverse('job_details', args=[str(job.name)]))
         
     return render_to_response('my_account/job_remove.html', locals(), RequestContext(request))
     

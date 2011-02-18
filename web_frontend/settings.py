@@ -111,8 +111,8 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 FILE_UPLOAD_HANDLERS= ("django.core.files.uploadhandler.TemporaryFileUploadHandler",)
 
 SITE_SUBFOLDER = '/test/'
-LOGIN_URL = '/login/'
-LOGOUT_URL = '/logout/'
+LOGIN_URL = SITE_SUBFOLDER.rstrip('/') + '/login/'
+LOGOUT_URL = SITE_SUBFOLDER.rstrip('/') + '/logout/'
 USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), 'condor-copasi-log.txt')

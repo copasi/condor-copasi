@@ -7,6 +7,7 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
 from web_frontend import settings
+from django.core.urlresolvers import reverse
 
 def mainPage(request):
     pageTitle = 'Home'
@@ -34,7 +35,7 @@ def loginPage(request):
                 try:
                     return HttpResponseRedirect(request.GET['next'])
                 except:
-                    return HttpResponseRedirect(settings.SITE_SUBFOLDER)
+                    return HttpResponseRedirect(reverse('index'))
             else:
                 #Login unsuccsessful
                 login_failure = True
@@ -48,7 +49,7 @@ def loginPage(request):
 def logoutPage(request):
     #Logout
     logout(request)
-    return HttpResponseRedirect(settings.SITE_SUBFOLDER)
+    return HttpResponseRedirect(reverse('index'))
     
     
 def handle_error(request, pageTitle, errors=[]):
