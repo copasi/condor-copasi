@@ -854,6 +854,7 @@ def ss_plot(request, job_name):
         raise
         return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
     try:
+        os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
         import matplotlib
         matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
         import matplotlib.pyplot as plt
