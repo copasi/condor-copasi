@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.6
+
 #Script to run at set intervals to check on the status of condor jobs, submit them, and collate results if necessary
 from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.6
  
 #Script adapted from example by Sander Marechal, released into public domain
 #Taken from http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
