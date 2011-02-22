@@ -30,7 +30,7 @@ SECRET_KEY = 'rl9pqx!dyqf)ev#@%1#82maga0c^m&))su%=crvfw^f$o$&cr1'
 SITE_SUBFOLDER = '/'
 
 #The directory to store user uploaded and automatically generated files. Must be writable by the web server and background daemon (See Wiki page on Deployment for details)
-USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
+USER_FILES_DIR = '/path/to/user/files'
 
 #The path to the log file. This must be in a directory in which the background daemon can write
 LOG_FILE = os.path.join('/var/log/condor-copasi/daemon-log.txt')
