@@ -1,8 +1,17 @@
 import os
 import sys
-path = '/home/ed/condor-copasi-svn/'
-if path not in sys.path:
-    sys.path.append(path)
+
+currentdir = os.path.dirname(__file__)
+#Get the web frontend dir
+wfdir, blah = os.path.split(currentdir)
+#And the web frontend parend dir
+parentdir, blah = os.path.split(wfdir)
+
+#Add them both to the python path
+if wfdir not in sys.path:
+    sys.path.append(wfdir)
+if parentdir not in sys.path:
+    sys.path.append(parentdir)
 
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_frontend.settings'
