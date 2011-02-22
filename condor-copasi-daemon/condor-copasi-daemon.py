@@ -15,9 +15,7 @@ class MyDaemon(Daemon):
             finish_time = time.time()
             
             difference = finish_time - start_time
-            print 'Took ' + str(difference) + ' seconds'
             if difference < min_repeat_time:
-                print 'Sleeping for ' + str(min_repeat_time - difference) + ' seconds'
                 time.sleep(min_repeat_time - difference)
  
 if __name__ == "__main__":
