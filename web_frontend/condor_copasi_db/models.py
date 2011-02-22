@@ -61,8 +61,10 @@ class Job(models.Model):
         
     def delete(self, *args, **kwargs):
         """Override the build-in delete. First delete the model directory. Then remove all child jobs. Finally call super.delete"""
-        
-        shutil.rmtree(self.get_path())
+        try:
+            shutil.rmtree(self.get_path())
+        except:
+            pass
         super(Job, self).delete(*args, **kwargs)
         
 class CondorJob(models.Model):
