@@ -11,7 +11,7 @@ class MyDaemon(Daemon):
         while True:
             min_repeat_time = settings.MIN_CONDOR_Q_POLL_TIME * 60
             start_time = time.time()
-            import helper
+            import background_run
             finish_time = time.time()
             
             difference = finish_time - start_time

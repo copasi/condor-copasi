@@ -19,7 +19,11 @@ Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
             </div>
             <div id="user_tools">
                 {% if user.is_authenticated %}
-                Welcome <b> {{ user.username }} </b> | <a href="{% url web_frontend.views.logoutPage %}">Logout</a>
+                Welcome <b> {{ user.username }} </b> | 
+                {% if user.is_staff %}
+                <a href="{% url admin:index %}">Administration</a> |
+                {% endif %}
+                <a href="{% url web_frontend.views.logoutPage %}">Logout</a>
                 {% else %}
                 <a href="{% url web_frontend.views.loginPage %}">Login</a>
                 {% endif %}

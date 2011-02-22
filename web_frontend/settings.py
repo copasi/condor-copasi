@@ -23,6 +23,43 @@ DATABASES = {
     }
 }
 
+# Make this unique, and don't share it with anybody.
+SECRET_KEY = 'rl9pqx!dyqf)ev#@%1#82maga0c^m&))su%=crvfw^f$o$&cr1'
+
+#The subfolder the site is served from on the webserver, e.g. '/condor-copasi/' for www.domain.com/condor-copasi/. If serving from the root, set to '/'
+SITE_SUBFOLDER = '/'
+
+#The directory to store user uploaded and automatically generated files. Must be writable by the web server and background daemon (See Wiki page on Deployment for details)
+USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
+
+#The path to the log file. This must be in a directory in which the background daemon can write
+LOG_FILE = os.path.join('/var/log/condor-copasi/daemon-log.txt')
+#Set the logging level. Either logging.DEBUG or logging.ERROR
+LOG_LEVEL = logging.DEBUG
+
+#The directoriy containing CopasiSE binary files
+COPASI_BINARY_DIR = '/home/ed/bin/condor_files/'
+#The copasi binary that is able to run on the local machine
+COPASI_LOCAL_BINARY = os.path.join(COPASI_BINARY_DIR, 'CopasiSE.LINUX.X86_64')
+
+#The number of days completed jobs are stored for. To disable automatic job removal, set this to 0
+COMPLETED_JOB_REMOVAL_DAYS = 14
+
+#The minimim time between condor_q polls in minutes. If too small can cause condor pool to become overwhelmed!
+MIN_CONDOR_Q_POLL_TIME = 2
+
+#The ideal time, in minutes, to aim for when splitting tasks up.
+#   Too small, and the overhead of submitting jobs becomes an issue.
+#   Too large, and the benefits of parralelisation are lost.
+#   Larger still, and the jobs risk being pre-empted by condor.
+IDEAL_JOB_TIME = 15
+
+#########################
+
+#Django configuration follows below; this does not usually need to be changed
+
+#########################
+
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
@@ -37,7 +74,8 @@ TIME_ZONE = 'Europe/London'
 LANGUAGE_CODE = 'en-us'
 
 SITE_ID = 1
-
+LOGIN_URL = SITE_SUBFOLDER.rstrip('/') + '/login/'
+LOGOUT_URL = SITE_SUBFOLDER.rstrip('/') + '/logout/'
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
@@ -59,9 +97,6 @@ MEDIA_URL = '/static/'
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
 ADMIN_MEDIA_PREFIX = '/admin/static/'
-
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = 'rl9pqx!dyqf)ev#@%1#82maga0c^m&))su%=crvfw^f$o$&cr1'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
@@ -91,7 +126,7 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.sites',
+#    'django.contrib.sites',
     'django.contrib.messages',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
@@ -109,27 +144,3 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 )
 
 FILE_UPLOAD_HANDLERS= ("django.core.files.uploadhandler.TemporaryFileUploadHandler",)
-
-SITE_SUBFOLDER = '/test/'
-LOGIN_URL = SITE_SUBFOLDER.rstrip('/') + '/login/'
-LOGOUT_URL = SITE_SUBFOLDER.rstrip('/') + '/logout/'
-USER_FILES_DIR = os.path.join(os.path.dirname(__file__), 'user_files').replace('\\','/')
-
-LOG_FILE = os.path.join(os.path.dirname(__file__), 'condor-copasi-log.txt')
-#Set the logging level. Either logging.DEBUG or logging.ERROR
-LOG_LEVEL = logging.DEBUG
-
-COPASI_BINARY_DIR = '/home/ed/bin/condor_files/'
-COPASI_LOCAL_BINARY = os.path.join(COPASI_BINARY_DIR, 'CopasiSE.LINUX.X86_64')
-
-#The number of days completed jobs are stored for. To disable automatic job removal, set this to 0
-COMPLETED_JOB_REMOVAL_DAYS = 14
-
-#The minimim time between condor_q polls in minutes. If too small can cause condor pool to become overwhelmed!
-MIN_CONDOR_Q_POLL_TIME = 2
-
-#The ideal time, in minutes, to aim for when splitting tasks up.
-#   Too small, and the overhead of submitting jobs becomes an issue.
-#   Too large, and the benefits of parralelisation are lost.
-#   Larger still, and the jobs risk being pre-empted by condor.
-IDEAL_JOB_TIME = 0.10
