@@ -1,0 +1,13 @@
+{% extends "my_account/job_details.html" %}
+
+
+{% block breadcrumbs_l4 %} Remove &gt;&gt;{%block breadcrumbs_l5%}{%endblock%}{%endblock%}
+
+{% block body %}
+<p>Are you sure you wish to remove the job <b>{{job.name}}</b>? This will delete any results saved on the system, and cannot be undone!</p>
+
+<form action="" method="post">
+{% csrf_token %}
+<input type="submit" value="Remove" name="remove_job"> <input type="submit" value="Cancel" name="cancel_job">
+</form>
+{%endblock %}
