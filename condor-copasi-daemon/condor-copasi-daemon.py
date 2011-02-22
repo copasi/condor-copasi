@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.6
+#!/usr/bin/env python
  
 #Script adapted from example by Sander Marechal, released into public domain
 #Taken from http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
@@ -6,12 +6,15 @@
 import sys, time
 from daemon import Daemon
 from web_frontend import settings
+import background_run
 class MyDaemon(Daemon):
     def run(self):
         while True:
             min_repeat_time = settings.MIN_CONDOR_Q_POLL_TIME * 60
             start_time = time.time()
-            import background_run
+            
+            background_run.run()
+            
             finish_time = time.time()
             
             difference = finish_time - start_time
