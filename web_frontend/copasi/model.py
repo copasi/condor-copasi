@@ -562,6 +562,21 @@ class CopasiModel:
         
     def prepare_so_condor_jobs(self):
         """Prepare the neccessary .job files to submit to condor for the sensitivity optimization task"""
+        #We must change the ownership of each of the copasi files to the user running this script
+        #
+        #We assume that we have write privileges on each of the files through our group, but don't have permission to actually change ownership (must be superuser to do this)
+        #Thus, we workaround this by copying the original file, deleting the original, and moving the copy back to the original filename
+        
+        import shutil
+        for i in range(len(self.get_optimization_parameters())):
+            for max in ('min', 'max'):
+                copasi_file = os.path.join(self.path, Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max))
+                temp_file = os.path.join(self.path, 'temp.cps')
+                shutil.copy2(copasi_file, temp_file)
+                os.remove(copasi_file)
+                os.rename(temp_file, copasi_file)
+                os.chmod(copasi_file, 0664) #Set as group readable and writable
+        
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
         condor_jobs = []
@@ -1439,7 +1454,7 @@ queue\n""")
         
         headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
         values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
-        print values
+#        print values
         
         output = []
         
@@ -1722,7 +1737,7 @@ queue\n""")
         
         headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
         values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
-        print values
+#        print values
         
         output = []
         
@@ -2161,7 +2176,19 @@ queue\n""")
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
         output_files = open(os.path.join(self.path, 'output_files_list.txt'), 'r').readlines()
 
+        #Next step, we must change the ownership of each of the copasi files to the user running this script
+        #
+        #We assume that we have write privileges on each of the files through our group, but don't have permission to actually change ownership (must be superuser to do this)
+        #Thus, we workaround this by copying the original file, deleting the original, and moving the copy back to the original filename
         
+        import shutil
+        for i in range(len(output_files)):
+            copasi_file = os.path.join(self.path, Template('auto_copasi_$index.cps').substitute(index=i))
+            temp_file = os.path.join(self.path, 'temp.cps')
+            shutil.copy2(copasi_file, temp_file)
+            os.remove(copasi_file)
+            os.rename(temp_file, copasi_file)
+            os.chmod(copasi_file, 0664) #Set as group readable and writable
         condor_jobs = []
                     
         for i in range(len(output_files)):
