@@ -151,17 +151,24 @@ def run():
                 logging.debug('Job ' + str(job.id) + ', User: ' + str(job.user) + ' finished processing on condor')
                 
                 #Open the log file and check the exit status
+                failed_job_count = 0
                 for condor_job in condor_jobs:
                     try:
                         filename=os.path.join(job.get_path(), condor_job.log_file)
                         log = condor_log.Log(filename)
                         assert log.termination_status == 0
                     except:
-                        logging.exception('Condor job exited with nonzero return value. Condor Job: ' + str(condor_job.queue_id) + ', Job: ' + str(job.id) + ', User: ' + str(job.user))
-                        job.status = 'E'
-                        job.finish_time=datetime.datetime.today()
-                        job.last_update=datetime.datetime.today()
-                        job.save()
+                        failed_job_count += 1
+                    
+                #Now, depending on the type of job, mark it as either 'error' nor not.
+                #For SS task, we require all jobs to have finished successfully
+                if failed_job_count > 0 and job.job_type == 'SS':
+                    logging.exception('Condor job exited with nonzero return value. Condor Job: ' + str(condor_job.queue_id) + ', Job: ' + str(job.id) + ', User: ' + str(job.user))
+                    job.status = 'E'
+                    job.finish_time=datetime.datetime.today()
+                    job.last_update=datetime.datetime.today()
+                    job.save()
+                #TODO: what about other jobs?
                     
                 if job.status == 'X':
                     #If the second stage of condor processing has finished, mark the job as complete
