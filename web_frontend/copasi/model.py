@@ -217,23 +217,32 @@ class CopasiModel:
             if friendly:
                 #Construct a user-friendly name for the parameter name using regexs
                 #Look for a match for global parameters: Vector=Values[Test parameter],
-                global_string = r'.*Vector=Values\[(?P<name>.*)\].*'
-                global_string_re = re.compile(global_string)
-                global_match = re.match(global_string_re, name)
+                values_string = r'.*Vector=Values\[(?P<name>.*)\].*'
+                values_string_re = re.compile(values_string)
+                values_match = re.match(values_string_re, name)
                 
-                if global_match:
-                    name = global_match.group('name')
+                if values_match:
+                    name = 'Values[' + values_match.group('name') + ']'
                 
-                #else check for a local match.
-                #Vector=Reactions[Reaction] Parameter=k1
-                local_string = r'.*Vector=Reactions\[(?P<reaction>.*)\].*Parameter=(?P<parameter>.*),Reference=Value.*'
-                local_string_re = re.compile(local_string)
-                local_match = re.match(local_string_re, name)
-                
-                if local_match:
-                    reaction = local_match.group('reaction')
-                    parameter = local_match.group('parameter')
-                    name = '(%s).%s'%(reaction, parameter)
+                else:
+                    #else check for a parameter match.
+                    #Vector=Reactions[Reaction] Parameter=k1
+                    parameter_string = r'.*Vector=Reactions\[(?P<reaction>.*)\].*Parameter=(?P<parameter>.*),Reference=Value.*'
+                    parameter_string_re = re.compile(parameter_string)
+                    parameter_match = re.match(parameter_string_re, name)
+                    
+                    if parameter_match:
+                        reaction = parameter_match.group('reaction')
+                        parameter = parameter_match.group('parameter')
+                        name = '(%s).%s'%(reaction, parameter)
+                        
+                    else:
+                        #Try again, this time looking for a string like: Vector=Metabolites[blah]
+                        metabolites_string = r'.*Vector=Metabolites\[(?P<name>.*)\].*'
+                        metabolites_string_re = re.compile(metabolites_string)
+                        metabolites_match = re.match(metabolites_string_re, name)
+                        if metabolites_match:
+                            name = 'Metabolites[' + metabolites_match.group('name') + ']'
 
             parameters.append((name, lowerBound, upperBound, startValue))
 
@@ -2273,7 +2282,7 @@ queue\n""")
         
         output_file.write('Algorithm name\tBest value\tCPU time\tFunction evals\t')
         for name, lowerBound, upperBound, startValue  in self.get_optimization_parameters():
-            output_file.write('Value[' + name + ']' + '\t')
+            output_file.write(name + '\t')
         output_file.write('\n')
         
         for value, filename in output:
