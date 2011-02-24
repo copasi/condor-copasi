@@ -887,10 +887,10 @@ queue\n""")
         
         return {
             'spec_file': os.path.join(self.path, 'results.job'),
-            'std_output_file': os.path.join(self.path, 'results.out'),
-            'std_error_file': os.path.join(self.path, 'results.err'),
-            'log_file': os.path.join(self.path, 'results.log'),
-            'job_output': os.path.join(self.path, 'results.txt'),
+            'std_output_file': 'results.out',
+            'std_error_file': 'results.err',
+            'log_file': 'results.log',
+            'job_output': 'results.txt',
         }
         
     def get_variables(self, pretty=False):

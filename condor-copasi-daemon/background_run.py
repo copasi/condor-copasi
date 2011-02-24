@@ -1,7 +1,7 @@
 #Script to run at set intervals to check on the status of condor jobs, submit them, and collate results if necessary
 from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel
-from web_frontend import settings
+from web_frontend import settings, condor_log
 import subprocess, os, re, datetime
 import logging
 
@@ -149,11 +149,25 @@ def run():
                 job.save()
             elif not still_running:
                 logging.debug('Job ' + str(job.id) + ', User: ' + str(job.user) + ' finished processing on condor')
+                
+                #Open the log file and check the exit status
+                for condor_job in condor_jobs:
+                    try:
+                        filename=os.path.join(job.get_path(), condor_job.log_file)
+                        log = condor_log.Log(filename)
+                        assert log.termination_status == 0
+                    except:
+                        logging.exception('Condor job exited with nonzero return value. Condor Job: ' + str(condor_job.queue_id) + ', Job: ' + str(job.id) + ', User: ' + str(job.user))
+                        job.status = 'E'
+                        job.finish_time=datetime.datetime.today()
+                        job.last_update=datetime.datetime.today()
+                        job.save()
+                    
                 if job.status == 'X':
                     #If the second stage of condor processing has finished, mark the job as complete
                     job.status='C'
                     job.finish_time=datetime.datetime.today()
-                else:
+                elif job.status != 'E':
                     #Otherwise mark it as waiting for local processing
                     job.status = 'W'
                 job.last_update=datetime.datetime.today()
@@ -162,7 +176,7 @@ def run():
             else:
                 job.last_update=datetime.datetime.today()
                 job.save()
-        except:
+        except Exception, e:
             logging.warning('Error preparing job for condor submission. Job: ' + str(job.id) + ', User: ' + str(job.user))
             logging.warning('Exception: ' + str(e))
     ############
