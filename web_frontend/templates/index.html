@@ -1,7 +1,19 @@
 {% extends "default.html" %}
 
 {% block body %}
-<p> Welcome to the Condor-Copasi web frontend.</p>
-<p> At some point, useful information will appear here. In the mean time, select one of the options from the menu on the left, or login using the link in the top-right.
+{% if not user.is_authenticated %}
+<h3>Welcome</h3>
+<p>Welcome to the Condor-Copasi web frontend.</p>
+<p> If you have a Condor-Copasi account, please log in by clicking the link in the top-right of the page. </p>
+<p> If you do not have a Condor-Copasi account, you will need to request one before you can use the system. Please contact the system administrator for further details. </p>
+
+{% else %}
+<h3>Welcome, {{ user.username }}</h3>
+<p>Welcome to the Condor-Copasi web frontend.</p>
+<p>To check on the status of jobs you have submitted, select 'My Account' from the menu on the left. Or, to add a new job, select 'Tasks', and choose the type of job you wish to submit.</p>
+
+<p>For help on how to use Condor Copasi, and for further information on the system, select 'Help'.</p>
+
+{% endif %}
 {% endblock %}
 
