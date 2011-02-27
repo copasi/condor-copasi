@@ -54,6 +54,11 @@ MIN_CONDOR_Q_POLL_TIME = 2
 #   Larger still, and the jobs risk being pre-empted by condor.
 IDEAL_JOB_TIME = 15
 
+
+#Optional: Condor-Copasi can submit jobs using the username of the webfrontend users, rather than the user running the background daemon.
+#This requires significant extra system configuration to function correctly; see the wiki page for details
+SUBMIT_WITH_USERNAMES = False
+
 #########################
 
 #Django configuration follows below; this does not usually need to be changed

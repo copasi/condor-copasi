@@ -557,14 +557,14 @@ class CopasiModel:
             #Update the sensitivities object
             singleObject.set('value',optString)
             
-            target = os.path.join(self.path, Template('auto_copasi_xml_max_$index.cps').substitute(index=i))
+            target = os.path.join(self.path, Template('auto_copasi_max_$index.cps').substitute(index=i))
             
             self.model.write(target)
         
             maximizeParameter.attrib['value'] = '0'
             s = Template('min_$index.txt')
             report.attrib['target'] = s.substitute(index=i)
-            target = os.path.join(self.path, Template('auto_copasi_xml_min_$index.cps').substitute(index=i))
+            target = os.path.join(self.path, Template('auto_copasi_min_$index.cps').substitute(index=i))
             self.model.write(target)
             i = i + 1
         
@@ -579,7 +579,7 @@ class CopasiModel:
         import shutil
         for i in range(len(self.get_optimization_parameters())):
             for max in ('min', 'max'):
-                copasi_file = os.path.join(self.path, Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max))
+                copasi_file = os.path.join(self.path, Template('auto_copasi_${max}_$index.cps').substitute(index=i, max=max))
                 temp_file = os.path.join(self.path, 'temp.cps')
                 shutil.copy2(copasi_file, temp_file)
                 os.remove(copasi_file)
@@ -592,7 +592,7 @@ class CopasiModel:
                     
         for i in range(len(self.get_optimization_parameters())):
             for max in ('min', 'max'):
-                copasi_file = Template('auto_copasi_xml_${max}_$index.cps').substitute(index=i, max=max)
+                copasi_file = Template('auto_copasi_${max}_$index.cps').substitute(index=i, max=max)
                 condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
                 condor_job_filename = os.path.join(self.path, Template('auto_condor_${max}_$index.job').substitute(index=i, max=max))
                 condor_file = open(condor_job_filename, 'w')
