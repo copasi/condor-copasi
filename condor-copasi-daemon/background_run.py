@@ -5,12 +5,42 @@ from web_frontend import settings, condor_log
 import subprocess, os, re, datetime
 import logging
 
-def condor_submit(condor_file):
+def condor_submit(condor_file, username=None, results=False):
     """Submit the .job file condor_file to the condor system using the condor_submit command"""
     #condor_file must be an absolute path to the condor job filename
     (directory, filename) = os.path.split(condor_file)
-    
-    p = subprocess.Popen(['condor_submit', condor_file],stdout=subprocess.PIPE, cwd=directory)
+    if not settings.SUBMIT_WITH_USERNAMES:
+        p = subprocess.Popen(['condor_submit', condor_file],stdout=subprocess.PIPE, cwd=directory)
+    else:
+        #Use sudo to submit with the job's user as username instead of condor-copasi-daemon username
+        #First, though, we need to change the ownership of the copasi file we're submitting along with the job
+        #We can't use chown, because we're not superuser
+        #Instead, because we have write access to the file, we can copy it, delete the original, and move the copy back to the original filename
+        #First, work out the name of the copasi file
+        #If the job is auto_condor_0.job, the corresponding copasi file will be auto_copasi_0.cps
+        #If we're processing the SS results file, skip this step.
+        if not results:
+            job_re = re.compile(r'auto_condor_(?P<name>.+).job')
+            name = job_re.match(filename).group('name')
+            copasi_filename = 'auto_copasi_' + name + '.cps'
+            
+            
+            
+            #Copy the copasi filename to a temp file
+            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/cp', '--preserve=mode', os.path.join(directory, copasi_filename), os.path.join(directory, copasi_filename + '.tmp')])      
+            
+            #Remove the original copasi file
+            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/rm', '-f', os.path.join(directory, copasi_filename)])
+            
+            #Rename the temp file back to the original name
+            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/mv', os.path.join(directory, copasi_filename + '.tmp'), os.path.join(directory, copasi_filename)])
+            
+            #Doublecheck we have group write permissions
+            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/chmod', 'g+w', os.path.join(directory, copasi_filename)])
+        
+        #Finally, we can run condor_submit
+        p = subprocess.Popen(['sudo', '-n', '-u', username, '/usr/bin/condor_submit', condor_file],stdout=subprocess.PIPE, cwd=directory)
+        
     process_output = p.communicate()[0]
     #Get condor_process number...
     process_id = int(process_output.splitlines()[2].split()[5].strip('.'))
@@ -58,11 +88,11 @@ def run():
                
             for cj in condor_jobs:
                 try:
-                    condor_job_id = condor_submit(cj['spec_file'])
+                    condor_job_id = condor_submit(cj['spec_file'], username=str(job.user.username))
                     condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                     condor_job.save()
                 except:
-                    logging.error('Error submitting job(s) to Condor; ensure condor scheduler service is running. Job: ' + str(job.id)  + ', User: ' + str(job.user))
+                    logging.exception('Error submitting job(s) to Condor; ensure condor scheduler service is running. Job: ' + str(job.id)  + ', User: ' + str(job.user))
             logging.debug('Submitted ' + str(len(condor_jobs)) + ' to Condor')
             job.status = 'S'
             job.last_update=datetime.datetime.today()
@@ -210,7 +240,7 @@ def run():
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 cj = model.prepare_ss_process_job(len(condor_jobs), job.runs)
                 #Submit the new job to condor
-                condor_job_id = condor_submit(cj['spec_file'])
+                condor_job_id = condor_submit(cj['spec_file'], username=str(job.user.username), results=True)
                 #And store a new condor job in the database
                 condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                 condor_job.save()
