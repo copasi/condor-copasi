@@ -685,8 +685,9 @@ def jobRemove(request, job_name):
         if 'remove_job' in request.POST:
             try:
                 job_name = job.name
-                job.delete()
-                request.session['message'] = 'Job ' + str(job_name) + ' removed.'
+                job.status = 'D'
+                job.save()
+                request.session['message'] = 'Job ' + str(job_name) + ' marked for removal.'
                 return HttpResponseRedirect(reverse('my_account'))
             except:
                 return web_frontend_views.handle_error(request, 'Error Removing Job',[])

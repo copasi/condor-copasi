@@ -49,6 +49,15 @@ def condor_submit(condor_file, username=None, results=False):
     
     return process_id
 
+def condor_rm(queue_id, username=None):
+    if not settings.SUBMIT_WITH_USERNAMES:
+        p = subprocess.Popen(['condor_rm', str(queue_id)])
+        p.communicate()
+    else:
+        subprocess.check_call(['sudo', '-n', '-u', username, '/usr/bin/condor_rm', str(queue_id)])
+        #p.communicate()
+        
+
 def run():
     #Set up logging, with the appropriate log level
     logging.basicConfig(filename=settings.LOG_FILE,level=settings.LOG_LEVEL, format='%(asctime)s::%(levelname)s::%(message)s', datefmt='%Y-%m-%d, %H:%M:%S')
@@ -318,5 +327,23 @@ def run():
             logging.debug('Removing old unconfirmed job ' + str(job.id) + ', User: ' + str(job.user))
             job.delete()
             
+    ##########
+    #Remove any jobs marked for deletion
+    deletion = models.Job.objects.filter(status='D')
+    for job in deletion:
+        try:
+            #First remove any condor jobs associated with the job
+            condor_jobs = models.CondorJob.objects.filter(parent=job)
+            for cj in condor_jobs:
+                if cj.queue_status == 'Q' or cj.queue_status == 'R' or cj.queue_status == 'I' or cj.queue_status == 'H':
+                    condor_rm(cj.queue_id, job.user.username)
+                logging.debug('Removing condor job ' + str(cj.queue_id) + ', User: ' + str(job.user))
+                cj.delete()
+            logging.debug('Removing job marked for deletion: ' + str(job.id) + ', User: ' + str(job.user))    
+            job.delete()
+        except:
+            logging.exception('Error removing marked for deletion job ' + str(job.id))
+
+
 if __name__ == '__main__':
     run()

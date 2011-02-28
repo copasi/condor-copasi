@@ -77,19 +77,32 @@
         {% endif %}
     </table>
 </div>
-{% if job_removal_days > 0 and job.finish_time != None %}
+
 <div class="job_remove">
 <p><b>Job Removal</b></p>
+{% if job_removal_days > 0 and job.finish_time != None %}
 All jobs are stored on the system for <b>{{job_removal_days}} day{%if job_removal_days > 1 %}s{%endif%}</b>, after which they are automatically removed, along with any saved results.</p>
 <p>This job will be removed in <b>{{job_removal_date|timeuntil}} ({{job_removal_date}})</b>.</p>
 <p>Alternatively, you can remove the job now:</p>
+
+{% else %}
+
+{% if job_removal_days == 0 and job.finish_time != None %}
+<p>Click the button below to remove this job from the system:</p>
+
+{% else %}
+<p>This job is still running. However, if you wish, you may cancel any associated condor jobs, and remove it from the system. To do this, click the button below: </p>
+
+{% endif %}
+{% endif %}
+
 
 <form action="{% url job_remove job.name %}" method="get">
     <input type="submit" value="Remove">
 </form>
 
 </div>
-{% endif %}
+
 {% if job.status != 'C' %}
 <p>This information was last updated <b>{{job.last_update|timesince}}</b> ago. </p>
 {% endif %}

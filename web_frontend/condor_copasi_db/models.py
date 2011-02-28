@@ -61,12 +61,12 @@ class Job(models.Model):
         return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id), self.model_name)
         
     def delete(self, *args, **kwargs):
-        """Override the build-in delete. First delete the model directory. Then remove all child jobs. Finally call super.delete"""
+        """Override the build-in delete. First remove all child jobs and call call super.delete. finally, remove the directory"""
+        super(Job, self).delete(*args, **kwargs)
         try:
             shutil.rmtree(self.get_path())
         except:
             pass
-        super(Job, self).delete(*args, **kwargs)
         
 class CondorJob(models.Model):
     #The parent job
@@ -89,6 +89,7 @@ class CondorJob(models.Model):
         ('R', 'Running'),
         ('H', 'Held'),
         ('F', 'Finished'),
+        ('D', 'Mark for deletion'),
     )
     queue_status = models.CharField(max_length=1, choices=QUEUE_CHOICES)
     #The id of the job in the queue. Only set once the job has been queued
@@ -100,15 +101,5 @@ class CondorJob(models.Model):
         return unicode(self.queue_id)
         
     def delete(self, *args, **kwargs):
-        """Override the build-in delete. If the job has queue status Q, I or R, remove from the queue first"""
-        if self.queue_status == 'Q' or self.queue_status=='I' or self.queue_status == 'R':
-            import subprocess
-            if not settings.SUBMIT_WITH_USERNAMES:
-                p = subprocess.Popen(['condor_rm', str(self.queue_id)])
-            else:
-                try:
-                    p = subprocess.Popen(['sudo', '-n', '-u', self.parent.user.username, 'condor_rm', str(self.queue_id)])
-                except:
-                    pass
-            p.communicate()
+        """Override the build-in delete."""
         super(CondorJob, self).delete(*args, **kwargs)
