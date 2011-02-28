@@ -146,6 +146,7 @@ TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
 'django.core.context_processors.debug',
 'django.core.context_processors.i18n',
 'context_processors.folder_urls',
+'context_processors.cc_version',
 )
 
 FILE_UPLOAD_HANDLERS= ("django.core.files.uploadhandler.TemporaryFileUploadHandler",)
