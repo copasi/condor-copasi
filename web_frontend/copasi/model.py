@@ -2247,7 +2247,7 @@ queue\n""")
                 match = output_re.match(line)
                 best_value_for_file = None
                 if match:
-                    current_best_value = match.groupdict()['best_value']
+                    current_best_value = float(match.groupdict()['best_value'])
                     if best_value_for_file == None:
                         best_value_for_file = current_best_value
 
