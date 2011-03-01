@@ -20,8 +20,7 @@ Visit $webaddress to see more details.
 This is an automated message sent by Condor-Copasi, do not reply.
         """)
     elif job.status == 'C':
-        messageTextTemplate = Template("""
-Dear $username,
+        messageTextTemplate = Template("""Dear $username,
 The job $jobname ($jobtype) running on Condor-Copasi has completed successfully.
 Visit $webaddress to see more details, to view any output, and to download any results.
 
