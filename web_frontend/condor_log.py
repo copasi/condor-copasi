@@ -48,7 +48,16 @@ class Log:
                 usr_hours = int(g('usr_hours'))
                 usr_minutes = int(g('usr_minutes'))
                 usr_seconds = int(g('usr_seconds'))
-                self.remote_usage_time = datetime.timedelta(days=usr_days, hours=usr_hours, minutes=usr_minutes, seconds=usr_seconds)
+
+                sys_days = int(g('sys_days'))
+                sys_hours = int(g('sys_hours'))
+                sys_minutes = int(g('sys_minutes'))
+                sys_seconds = int(g('sys_seconds'))
+                
+                usr_time = datetime.timedelta(days=usr_days, hours=usr_hours, minutes=usr_minutes, seconds=usr_seconds)
+                sys_time = datetime.timedelta(days=sys_days, hours=sys_hours, minutes=sys_minutes, seconds=sys_seconds)
+                
+                self.remote_usage_time = usr_time + sys_time
             
             if execution_match:
                 g = execution_match.group
@@ -69,7 +78,7 @@ class Log:
                 except AssertionError:
                     year = datetime.datetime.today().year
                 
-                self.execution_start = datetime.datetime(year=year, month=month, day=day, hour=hour, second=second)
+                self.execution_start = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
                 self.host = host
                 
             if termination_status_match:
@@ -85,6 +94,14 @@ class Log:
                 
                 #Again, guess the year
                 year=datetime.datetime.today().year
-                self.termination_time = datetime.datetime(year=year, month=month, day=day, hour=hour, second=second)
+                self.termination_time = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
+
+            #For some reason, the remote usage time sometimes appears as zero. In this case, set running time as follows:
+            if self.remote_usage_time == datetime.timedelta():            
+                self.running_time = self.termination_time - self.execution_start
+            else:
+                self.running_time = self.remote_usage_time
+              
+                
         except:
             raise

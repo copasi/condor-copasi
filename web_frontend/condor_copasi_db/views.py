@@ -649,14 +649,15 @@ def jobDetails(request, job_name):
         
         #Calculate the total amount of CPU time used by the individual condor jobs
         total_cpu_time = datetime.timedelta()
+        f=open('/var/www/condor-copasi/user-files/timelog.txt', 'w')
         for condor_job in models.CondorJob.objects.filter(parent=job):
             try:
                 log_file = os.path.join(job.get_path(), condor_job.log_file)
                 log = condor_log.Log(log_file)
-                total_cpu_time += log.remote_usage_time
+                total_cpu_time += log.running_time
             except:
                 pass
-    
+        f.close()
     return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
     
 @login_required

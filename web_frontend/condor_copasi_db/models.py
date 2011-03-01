@@ -50,7 +50,7 @@ class Job(models.Model):
     
     class Meta:
         unique_together = ('user', 'name', 'submitted')
-        ordering = ['last_update']
+        ordering = ['-last_update']
 
     def __unicode__(self):
         return u'%s: %s' % (self.job_type, self.name)
