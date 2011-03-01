@@ -58,7 +58,7 @@ IDEAL_JOB_TIME = 15
 #Send email notifications, e.g. job completion, job errors?
 SEND_EMAILS = False
 #The SMTP Host server.
-SMTP_HOST = 'smtp.manchester.ac.uk'
+SMTP_HOST = 'localhost'
 #The 'from' email address
 EMAIL_FROM_ADDRESS = 'condor-copasi@googlecode.com' 
 
