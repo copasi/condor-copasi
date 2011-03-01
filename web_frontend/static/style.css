@@ -68,7 +68,7 @@ div.review {
     padding: 5px;
     margin: 2em auto 2em auto;
     border: 1px solid gray;
-    max-width: 80%;
+    margin-left: 30px;
 }
 
 div.job_complete {
@@ -92,8 +92,7 @@ div.job_remove {
 div.review table{
     border-collapse: collapse;
     border: 1px solid gray;
-    margin-left: auto;
-    margin-right: auto;
+
 }
 div.review th{
     font-weight: bold;

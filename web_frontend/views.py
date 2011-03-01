@@ -1,5 +1,5 @@
 from django.shortcuts import render_to_response
-import datetime    
+import datetime, pickle, os
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -11,6 +11,18 @@ from django.core.urlresolvers import reverse
 
 def mainPage(request):
     pageTitle = 'Home'
+    
+    #Attempt to load the queue status from user_files/condor_status.pickle
+    try:
+        pickle_filename = os.path.join(settings.USER_FILES_DIR, 'condor_status.pickle')
+        pickle_file = open(pickle_filename, 'r')
+        status = pickle.load(pickle_file)
+        pickle_file.close()
+    except:
+        pass
+    if settings.CONDOR_POOL_STATUS != '':
+        pool_status_page = settings.CONDOR_POOL_STATUS
+        
     return render_to_response('index.html', locals(), RequestContext(request))
 
 def helpPage(request):

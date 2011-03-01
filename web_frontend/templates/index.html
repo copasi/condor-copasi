@@ -14,6 +14,23 @@
 
 <p>For help on how to use Condor Copasi, and for further information on the system, select 'Help'.</p>
 
+
+{% if status %}
+<h2>Condor pool status</h2>
+<p>The status of the condor pool (updated {{ status.time|timesince }} ago) is as follows:</p>
+
+<div class="review">
+<table>
+<tr><th>Total number of machines</th><td>{{status.total}}</td></tr>
+<tr><th>Machines running jobs</th><td>{{status.claimed}}</td></tr>
+<tr><th>Machines available</th><td>{{status.unclaimed}}</td></tr>
+</table>
+</div>
+{% if pool_status_page %}
+<p>Further details on the Condor pool status are available on the <a href="{{pool_status_page}}" target="_blank">pool status page</a>.</p>
+
+{% endif %}
+{% endif %}
 {% endif %}
 {% endblock %}
 

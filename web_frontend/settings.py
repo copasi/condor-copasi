@@ -54,6 +54,8 @@ MIN_CONDOR_Q_POLL_TIME = 2
 #   Larger still, and the jobs risk being pre-empted by condor.
 IDEAL_JOB_TIME = 15
 
+#Optional: link to condor pool status page. Include the full address, e.g. 'http://www.domain.com/condor_status_page/'
+CONDOR_POOL_STATUS = ''
 
 #Optional: Condor-Copasi can submit jobs using the username of the webfrontend users, rather than the user running the background daemon.
 #This requires significant extra system configuration to function correctly; see the wiki page for details

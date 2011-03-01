@@ -1,7 +1,7 @@
 #Script to run at set intervals to check on the status of condor jobs, submit them, and collate results if necessary
 from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel
-from web_frontend import settings, condor_log
+from web_frontend import settings, condor_log, condor_status
 import subprocess, os, re, datetime
 import logging
 
@@ -344,6 +344,13 @@ def run():
         except:
             logging.exception('Error removing marked for deletion job ' + str(job.id))
 
+    ###########
+    #Update the condor status
+    try:
+        condor_status.run()
+        logging.debug('Updated Condor status')
+    except:
+        logging.exception('Error updating the condor status')
 
 if __name__ == '__main__':
     run()
