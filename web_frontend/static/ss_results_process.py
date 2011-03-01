@@ -86,7 +86,7 @@ for line in open('raw_results.txt', 'r'):
             
             #And add the particle numbers
             for i in range(cols)[1:]:
-                result = int(line_cols[i])
+                result = float(line_cols[i])
                 results[timepoint-1][i].add(result)
         except:
             print i

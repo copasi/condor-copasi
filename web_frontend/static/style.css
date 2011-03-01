@@ -60,7 +60,7 @@ div.plot {
     margin: 2em auto 2em auto;
     border: 1px solid gray;
     max-width: 80%;
-    min-width: 800px;
+    min-width: 960px;
 }
 
 div.review {
