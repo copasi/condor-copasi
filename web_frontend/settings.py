@@ -28,7 +28,8 @@ SECRET_KEY = 'rl9pqx!dyqf)ev#@%1#82maga0c^m&))su%=crvfw^f$o$&cr1'
 
 #The subfolder the site is served from on the webserver, e.g. '/condor-copasi/' for www.domain.com/condor-copasi/. If serving from the root, set to '/'
 SITE_SUBFOLDER = '/'
-
+#The domain on which condor_copasi is being hosted. e.g. for www.domain.com/condor-copasi set to 'www.domain.com'. Note, no trailing '/'
+SITE_DOMAIN = 'www.domain.com'
 #The directory to store user uploaded and automatically generated files. Must be writable by the web server and background daemon (See Wiki page on Deployment for details)
 USER_FILES_DIR = '/path/to/user/files'
 
@@ -54,7 +55,14 @@ MIN_CONDOR_Q_POLL_TIME = 2
 #   Larger still, and the jobs risk being pre-empted by condor.
 IDEAL_JOB_TIME = 15
 
-#Optional: link to condor pool status page. Include the full address, e.g. 'http://www.domain.com/condor_status_page/'
+#Send email notifications, e.g. job completion, job errors?
+SEND_EMAILS = False
+#The SMTP Host server.
+SMTP_HOST = 'smtp.manchester.ac.uk'
+#The 'from' email address
+EMAIL_FROM_ADDRESS = 'condor-copasi@googlecode.com' 
+
+#Optional: link to condor pool status page. Will be included on the home page. Include the full address, e.g. 'http://www.domain.com/condor_status_page/'
 CONDOR_POOL_STATUS = ''
 
 #Optional: Condor-Copasi can submit jobs using the username of the webfrontend users, rather than the user running the background daemon.

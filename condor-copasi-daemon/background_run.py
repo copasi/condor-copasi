@@ -1,7 +1,7 @@
 #Script to run at set intervals to check on the status of condor jobs, submit them, and collate results if necessary
 from web_frontend.condor_copasi_db import models
 from web_frontend.copasi.model import CopasiModel
-from web_frontend import settings, condor_log, condor_status
+from web_frontend import settings, condor_log, condor_status, email_notify
 import subprocess, os, re, datetime
 import logging
 
@@ -114,7 +114,7 @@ def run():
             job.last_update=datetime.datetime.today()
             job.finish_time=datetime.datetime.today()
             job.save()
-
+            email_notify.send_email(job)
 
     ############        
 
@@ -186,6 +186,7 @@ def run():
                 job.finish_time=datetime.datetime.today()
                 job.last_update=datetime.datetime.today()
                 job.save()
+                email_notify.send_email(job)
             elif not still_running:
                 logging.debug('Job ' + str(job.id) + ', User: ' + str(job.user) + ' finished processing on condor')
                 
@@ -207,12 +208,15 @@ def run():
                     job.finish_time=datetime.datetime.today()
                     job.last_update=datetime.datetime.today()
                     job.save()
+                    email_notify.send_email(job)
                 #TODO: what about other jobs?
                     
                 if job.status == 'X':
                     #If the second stage of condor processing has finished, mark the job as complete
                     job.status='C'
                     job.finish_time=datetime.datetime.today()
+                    job.save()
+                    email_notify.send_email(job)
                 elif job.status != 'E':
                     #Otherwise mark it as waiting for local processing
                     job.status = 'W'
@@ -243,6 +247,7 @@ def run():
                 job.last_update=datetime.datetime.today()
                 job.save()
                 model.get_so_results(save=True)
+                email_notify.send_email(job)
             elif job.job_type == 'SS':
                 #Collate the results, and ship them off in a new condor job to be averaged
                 #Use this to keep track of the number of jobs we split the task in to
@@ -266,6 +271,7 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
+                email_notify.send_email(job)
             elif job.job_type == 'OR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -275,7 +281,7 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
-                
+                email_notify.send_email(job)
             elif job.job_type == 'PR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -292,6 +298,7 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
+                email_notify.send_email(job)
         except Exception, e:
             logging.warning('Error processing results for job ' + str(job.id) + ', User: ' + str(job.user))
             logging.warning('Exception: ' + str(e))
@@ -299,7 +306,7 @@ def run():
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
             job.save()
-
+            email_notify.send_email(job)
             
             
 
