@@ -78,7 +78,7 @@ div.job_complete {
     border: 1px solid gray;
 }
 div.job_error {
-    background: #f7d5cd;
+    background: #ffe9ea;
     padding: 5px;
     margin: 2em auto 2em auto;
     border: 1px solid gray;
@@ -87,7 +87,7 @@ div.job_remove {
     background: #ffe9ea;
     padding: 5px;
     margin: 2em auto 2em auto;
-    border: 2px dashed red;
+    border: 1.5px solid red;
 }
 div.review table{
     border-collapse: collapse;
