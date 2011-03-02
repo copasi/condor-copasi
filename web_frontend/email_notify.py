@@ -9,7 +9,7 @@ def send_email(job):
 
     receiver = job.user.email
 
-    if receiver == None:
+    if receiver == None or receiver == '':
         return
 
     if job.status == 'E':
