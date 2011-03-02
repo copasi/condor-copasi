@@ -4,7 +4,7 @@
 
 {% block tasklist %}
 <ul>
-    <li><a href="{% url new_SO%}">Optimization of Sensitivities</a></li>
+    <li><a href="{% url new_SO%}">Sensitivity Optimization</a></li>
     <li><a href="{% url new_SS %}">Stochastic Simulation</a></li>
     <li><a href="{% url new_PS %}">Scan in Parallel</a></li>
     <li><a href="{% url new_OR %}">Optimization Repeat</a></li>
@@ -15,7 +15,26 @@
 
 {%block body %}
 
-<p>List of tasks to go here, along with task descriptions
+<p>To start running a new job on the system, select the type of task you wish to perform from the menu on the left. Brief descriptions of the tasks available are listed below. For more detailed information, consult the <a href="http://code.google.com/p/condor-copasi/wiki/Usage" target="_blank">Wiki site</a></p>
+
+<h4>Sensitivity Optimization / Global Sensitivity Analysis</h4>
+Condor-Copasi is able to automate and parallelize the global sensitivity analysis procedure by optimization of sensitivities, as described in the paper <a href="http://www.ncbi.nlm.nih.gov/pubmed/18632455" target="_blank">A new strategy for assessing sensitivities in biochemical models</a>.
+
+<h4>Stochastic Simulation</h4>
+Condor-Copasi provides an easy to use environment for running multiple stochastic simulations. The simulations are automatically split into parallel jobs and run on the Condor pool. Once completed, the results are automatically collated, and particle number means and standard deviations calculated. Plots of this processed data can be obtained through the web interface.
+
+<h4>Parallel Scan</h4>
+Condor-Copasi will take a Parameter Scan set up in Copasi and automatically split it into smaller chunks. In cases where multiple scan tasks/repeats are nested, only the the top-level scan will be split. The smaller chunks are then submitted to the Condor pool, and the results collated as if the scan task had been run on a single machine.
+
+<h4>Optimization Repeat</h4>
+This feature runs the optimization task a set number of times, splitting into multiple parallel jobs where necessary. The best value from the multiple number of runs is extracted, though the results of every optimization run are available for download too if necessary.
+
+<h4>Parameter Estimation Repeat</h4>
+Similar to the optimization repeat task above, this feature runs the parameter estimation task multiple times, splitting into parallel jobs where necessary. The best set of parameters values are then selected, though the results of each parameter estimation run are available to download if necessary.
+
+<h4>Optimization Repeat with Different Alogorithms</h4>
+This feature runs the optimization task using different algorithms. Each algorithm runs a separate parallel job. Condor-Copasi will automatically determine which algorithm(s) found the best result.
+
 
 
 {%endblock%}

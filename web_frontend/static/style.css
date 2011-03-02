@@ -11,7 +11,7 @@ body {
 }
 
 form {
-    background: #ded3ff;
+    background: #d8e1ff;
     margin: 0.5em;
     padding: 0.5em;
     border: 1px solid gray;
@@ -66,7 +66,7 @@ div.plot {
 div.review {
     background: #fcffbf;
     padding: 5px;
-    margin: 2em auto 2em auto;
+/*    margin: 2em auto 2em auto;*/
     border: 1px solid gray;
     margin-left: 30px;
 }
@@ -84,10 +84,10 @@ div.job_error {
     border: 1px solid gray;
 }
 div.job_remove {
-    background: #f6d49a;
+    background: #ffe9ea;
     padding: 5px;
     margin: 2em auto 2em auto;
-    border: 1px solid gray;
+    border: 2px dashed red;
 }
 div.review table{
     border-collapse: collapse;
@@ -160,7 +160,7 @@ table.formtable th {
     display: block;
     position: absolute;
     min-height: 100%;
-    width: 100%;
+    min-width: 100%;
 }
 #wrapper{
     display: block;
