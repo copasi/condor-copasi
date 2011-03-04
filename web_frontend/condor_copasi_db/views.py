@@ -429,7 +429,7 @@ def newTask(request, type):
                     return HttpResponseRedirect(reverse('confirm_task', args=[str(job.id)]))
             except:
                 raise
-                file_error = 'The submitted file is not a valid Copasi xml file'
+                file_error = 'The submitted file is not a valid COPASI xml file'
                     
     else:
         form = Form()

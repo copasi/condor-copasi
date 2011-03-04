@@ -3,7 +3,7 @@
 <html>
 <head>
 <title>
-Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
+Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
 <link rel="stylesheet" type="text/css" href="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css" /> 
 {%block head%}
@@ -15,7 +15,7 @@ Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
     <div id="wrapper">
         <div id="header">
             <div id="branding">
-                Condor-Copasi
+                Condor-COPASI
             </div>
             <div id="user_tools">
                 {% if user.is_authenticated %}
@@ -63,7 +63,7 @@ Condor-Copasi Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
         </div>
     </div>
     <div id="footer">
-        Condor-Copasi Web Frontend, version {{version}}. Copyright 2010.
+        Condor-COPASI Web Frontend, version {{version}}. Copyright 2010.
     </div>
 </div>
 </body>

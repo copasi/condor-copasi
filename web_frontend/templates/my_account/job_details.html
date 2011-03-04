@@ -34,12 +34,12 @@
 
 <b>An error has occurred while processing this job</b>
 {%if total_condor_jobs > 0 %}
-<p>The logs show that at least one job was submitted to the Condor system. You may find it helpful to download the results directory, and examine the Condor log files (<b><tt>*.log</tt></b>), and Copasi output (<b><tt>*.out</tt></b>) and error (<b><tt>*.err</tt></b>) files to determine the cause of the failure.
+<p>The logs show that at least one job was submitted to the Condor system. You may find it helpful to download the results directory, and examine the Condor log files (<b><tt>*.log</tt></b>), and COPASI output (<b><tt>*.out</tt></b>) and error (<b><tt>*.err</tt></b>) files to determine the cause of the failure.
 <p>You may also be able to recover any raw, unprocessed results.
 
 {% else %}
 
-<p>The logs show that no jobs were submitted to the Condor system. The most likely cause for this error is a malformed Copasi <b><tt>.cps</tt></b> file. Ensure that all the recommended guidelines have been followed while setting up the file, including using specified version of Copasi.
+<p>The logs show that no jobs were submitted to the Condor system. The most likely cause for this error is a malformed COPASI <b><tt>.cps</tt></b> file. Ensure that all the recommended guidelines have been followed while setting up the file, including using specified version of COPASI.
 {% endif %}
 
 <ul class="job_details">
