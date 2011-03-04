@@ -1,11 +1,13 @@
 {# Root HTML template #}
 {% autoescape on %}
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
 <title>
 Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
-<link rel="stylesheet" type="text/css" href="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css" /> 
+<link rel="stylesheet" type="text/css" href="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css"> 
 {%block head%}
 {% endblock %}
 </head>
@@ -15,7 +17,7 @@ Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
     <div id="wrapper">
         <div id="header">
             <div id="branding">
-                Condor-COPASI
+                <a href="{% url index %}">Condor-COPASI</a>
             </div>
             <div id="user_tools">
                 {% if user.is_authenticated %}

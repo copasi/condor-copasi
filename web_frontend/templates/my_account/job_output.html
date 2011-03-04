@@ -26,7 +26,7 @@
 {% endif %}
 {% if job.job_type == 'SS' %}
 <div class = "plot">
-<img src="{% url plot job.name %}{{img_string}}" alt="Plot" />
+<img src="{% url plot job.name %}{{img_string}}" alt="Plot">
 <br>
 <form action="{% url plot job.name %}{{img_string}}" method="post">
 {% csrf_token %}
