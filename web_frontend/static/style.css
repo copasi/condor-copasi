@@ -4,7 +4,7 @@ body {
     font-size: 12px;
     font-family: "Lucida Grande","DejaVu Sans","Bitstream Vera Sans",Verdana,Arial,sans-serif;
     color: #333;
-    background: #E6E6E6;
+    background: #e1ebfa;
     min-width: 500px;
     width: 100%;
     overflow:auto;
@@ -113,7 +113,7 @@ div.algorithm{
 
 table.jobtable {
     border-collapse: collapse;
-    background: #e6e6e6;
+    background: #f0f0f1;
     border: 1px solid gray;
     font-size: 12px;
 }
