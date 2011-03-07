@@ -230,7 +230,7 @@ def newTask(request, type):
     """Upload page for new tasks"""
     
     if type == 'SO':
-        pageTitle = 'Optimization of Sensitivities'
+        pageTitle = 'Sensitivity Optimization / Global Sensitivity Analysis' 
         Form = UploadModelForm
     elif type == 'SS':
         pageTitle = 'Stochastic Simulation'
