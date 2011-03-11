@@ -4,7 +4,7 @@ import subprocess, re, os, pickle, datetime
 from web_frontend import settings
 
 def run():
-    p = subprocess.Popen(['condor_status'], stdout=subprocess.PIPE)
+    p = subprocess.Popen([settings.CONDOR_STATUS_LOCATION], stdout=subprocess.PIPE)
 
     output = p.communicate()[0].splitlines()
 

@@ -69,6 +69,17 @@ CONDOR_POOL_STATUS = ''
 #This requires significant extra system configuration to function correctly; see the wiki page for details
 SUBMIT_WITH_USERNAMES = False
 
+#####
+#Locations for the various system commands we need to execute
+CP_LOCATION = '/bin/cp'
+RM_LOCATION = '/bin/rm'
+MV_LOCATION = '/bin/mv'
+CHMOD_LOCATION = '/bin/chmod'
+CHGRP_LOCATION = '/bin/chgrp'
+CONDOR_RM_LOCATION = '/usr/bin/condor_rm'
+CONDOR_SUBMIT_LOCATION = '/usr/bin/condor_submit'
+CONDOR_Q_LOCATION = '/usr/bin/condor_q'
+CONDOR_STATUS_LOCATION = '/usr/bin/condor_status'
 #########################
 
 #Django configuration follows below; this does not usually need to be changed

@@ -10,7 +10,7 @@ def condor_submit(condor_file, username=None, results=False):
     #condor_file must be an absolute path to the condor job filename
     (directory, filename) = os.path.split(condor_file)
     if not settings.SUBMIT_WITH_USERNAMES:
-        p = subprocess.Popen(['condor_submit', condor_file],stdout=subprocess.PIPE, cwd=directory)
+        p = subprocess.Popen([settings.CONDOR_SUBMIT_LOCATION, condor_file],stdout=subprocess.PIPE, cwd=directory)
     else:
         #Use sudo to submit with the job's user as username instead of condor-copasi-daemon username
         #First, though, we need to change the ownership of the copasi file we're submitting along with the job
@@ -27,19 +27,19 @@ def condor_submit(condor_file, username=None, results=False):
             
             
             #Copy the copasi filename to a temp file
-            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/cp', '--preserve=mode', os.path.join(directory, copasi_filename), os.path.join(directory, copasi_filename + '.tmp')])      
+            subprocess.check_call(['sudo', '-u', username, settings.CP_LOCATION, '--preserve=mode', os.path.join(directory, copasi_filename), os.path.join(directory, copasi_filename + '.tmp')])      
             
             #Remove the original copasi file
-            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/rm', '-f', os.path.join(directory, copasi_filename)])
+            subprocess.check_call(['sudo', '-u', username, settings.RM_LOCATION, '-f', os.path.join(directory, copasi_filename)])
             
             #Rename the temp file back to the original name
-            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/mv', os.path.join(directory, copasi_filename + '.tmp'), os.path.join(directory, copasi_filename)])
+            subprocess.check_call(['sudo', '-u', username, settings.MV_LOCATION, os.path.join(directory, copasi_filename + '.tmp'), os.path.join(directory, copasi_filename)])
             
             #Doublecheck we have group write permissions
-            subprocess.check_call(['sudo', '-n', '-u', username, '/bin/chmod', 'g+w', os.path.join(directory, copasi_filename)])
+            subprocess.check_call(['sudo', '-u', username, settings.CHMOD_LOCATION, 'g+w', os.path.join(directory, copasi_filename)])
         
         #Finally, we can run condor_submit
-        p = subprocess.Popen(['sudo', '-n', '-u', username, '/usr/bin/condor_submit', condor_file],stdout=subprocess.PIPE, cwd=directory)
+        p = subprocess.Popen(['sudo', '-u', username, settings.CONDOR_SUBMIT_LOCATION, condor_file],stdout=subprocess.PIPE, cwd=directory)
         
     process_output = p.communicate()[0]
     #Get condor_process number...
@@ -51,10 +51,10 @@ def condor_submit(condor_file, username=None, results=False):
 
 def condor_rm(queue_id, username=None):
     if not settings.SUBMIT_WITH_USERNAMES:
-        p = subprocess.Popen(['condor_rm', str(queue_id)])
+        p = subprocess.Popen([settings.CONDOR_RM_LOCATION, str(queue_id)])
         p.communicate()
     else:
-        subprocess.check_call(['sudo', '-n', '-u', username, '/usr/bin/condor_rm', str(queue_id)])
+        subprocess.check_call(['sudo', '-u', username, settings.CONDOR_RM_LOCATION, str(queue_id)])
         #p.communicate()
         
 
@@ -114,13 +114,16 @@ def run():
             job.last_update=datetime.datetime.today()
             job.finish_time=datetime.datetime.today()
             job.save()
-            email_notify.send_email(job)
+            try:
+                email_notify.send_email(job)
+            except:
+                logging.exception('Exception: error sending email')
 
     ############        
 
     #Step two, go through the condor_q output and update the status of our condor jobs
     try:
-        condor_q_process = subprocess.Popen('condor_q', stdout=subprocess.PIPE)
+        condor_q_process = subprocess.Popen(settings.CONDOR_Q_LOCATION, stdout=subprocess.PIPE)
         condor_q_output = condor_q_process.communicate()[0].splitlines()
         #Process the output using regexps. Example line is as follows:
         # ID      OWNER            SUBMITTED     RUN_TIME ST PRI SIZE CMD               
@@ -186,7 +189,10 @@ def run():
                 job.finish_time=datetime.datetime.today()
                 job.last_update=datetime.datetime.today()
                 job.save()
-                email_notify.send_email(job)
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
             elif not still_running:
                 logging.debug('Job ' + str(job.id) + ', User: ' + str(job.user) + ' finished processing on condor')
                 
@@ -208,7 +214,10 @@ def run():
                     job.finish_time=datetime.datetime.today()
                     job.last_update=datetime.datetime.today()
                     job.save()
-                    email_notify.send_email(job)
+                    try:
+                        email_notify.send_email(job)
+                    except:
+                        logging.exception('Exception: error sending email')
                 #TODO: what about other jobs?
                     
                 if job.status == 'X':
@@ -216,7 +225,10 @@ def run():
                     job.status='C'
                     job.finish_time=datetime.datetime.today()
                     job.save()
-                    email_notify.send_email(job)
+                    try:
+                        email_notify.send_email(job)
+                    except:
+                        logging.exception('Exception: error sending email')
                 elif job.status != 'E':
                     #Otherwise mark it as waiting for local processing
                     job.status = 'W'
@@ -247,7 +259,10 @@ def run():
                 job.last_update=datetime.datetime.today()
                 job.save()
                 model.get_so_results(save=True)
-                email_notify.send_email(job)
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
             elif job.job_type == 'SS':
                 #Collate the results, and ship them off in a new condor job to be averaged
                 #Use this to keep track of the number of jobs we split the task in to
@@ -271,7 +286,10 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
-                email_notify.send_email(job)
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
             elif job.job_type == 'OR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -281,7 +299,10 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
-                email_notify.send_email(job)
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
             elif job.job_type == 'PR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -298,7 +319,10 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
-                email_notify.send_email(job)
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
         except Exception, e:
             logging.warning('Error processing results for job ' + str(job.id) + ', User: ' + str(job.user))
             logging.warning('Exception: ' + str(e))
@@ -306,7 +330,10 @@ def run():
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
             job.save()
-            email_notify.send_email(job)
+            try:
+                email_notify.send_email(job)
+            except:
+                logging.exception('Exception: error sending email')
             
             
 
