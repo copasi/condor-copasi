@@ -382,7 +382,7 @@ def run():
     #Update the condor status
     try:
         condor_status.run()
-        logging.debug('Updated Condor status')
+        #logging.debug('Updated Condor status')
     except:
         logging.exception('Error updating the condor status')
 
