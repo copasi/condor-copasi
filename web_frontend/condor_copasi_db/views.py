@@ -809,7 +809,7 @@ def jobResultDownload(request, job_name):
     
 @login_required
 def jobDownload(request, job_name):
-    """Generate a tar.gz file of the results directory, and return it"""
+    """Generate a tar.bz2 file of the results directory, and return it"""
     #Check to see if the tar.gz file exists already, if not create it
     try:
         job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
@@ -819,15 +819,16 @@ def jobDownload(request, job_name):
         model = CopasiModel(job.get_filename())
     except:
         return web_frontend_views.handle_error(request, 'Error Loading Model',[])
-    filename = os.path.join(model.path, str(job.name) + '.tar.gz')
+    filename = os.path.join(model.path, str(job.name) + '.tar.bz2')
     if not os.path.isfile(filename) or True:
         import tarfile
-        tar = tarfile.open(name=filename, mode='w:gz')
+        tar = tarfile.open(name=filename, mode='w:bz2')
         tar.add(model.path, job.name)
         tar.close()
+
     result_file = open(filename, 'r')
-    response = HttpResponse(result_file, content_type='application/x-gzip')
-    response['Content-Disposition'] = 'attachment; filename=' + job.name + '.tar.gz'
+    response = HttpResponse(result_file, content_type='application/x-bzip2')
+    response['Content-Disposition'] = 'attachment; filename=' + job.name + '.tar.bz2'
     response['Content-Length'] = os.path.getsize(filename)
 
     return response
