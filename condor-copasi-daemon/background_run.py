@@ -56,7 +56,17 @@ def condor_rm(queue_id, username=None):
     else:
         subprocess.check_call(['sudo', '-u', username, settings.CONDOR_RM_LOCATION, str(queue_id)])
         #p.communicate()
+
+def zip_up_dir(job):
+    """Create a tar.bz2 file of the job directory"""
+    filename = os.path.join(job.get_path(), str(job.name) + '.tar.bz2')
+    if not os.path.isfile(filename):
+        import tarfile
+        tar = tarfile.open(name=filename, mode='w:bz2')
+        tar.add(job.get_path(), job.name)
+        tar.close()
         
+
 
 def run():
     #Set up logging, with the appropriate log level
@@ -114,6 +124,10 @@ def run():
             job.last_update=datetime.datetime.today()
             job.finish_time=datetime.datetime.today()
             job.save()
+            try:
+                zip_up_dir(job)
+            except:
+                logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
             try:
                 email_notify.send_email(job)
             except:
@@ -190,6 +204,10 @@ def run():
                 job.last_update=datetime.datetime.today()
                 job.save()
                 try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                try:
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
@@ -215,9 +233,14 @@ def run():
                     job.last_update=datetime.datetime.today()
                     job.save()
                     try:
+                        zip_up_dir(job)
+                    except:
+                        logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                    try:
                         email_notify.send_email(job)
                     except:
                         logging.exception('Exception: error sending email')
+                    
                 #TODO: what about other jobs?
                     
                 if job.status == 'X':
@@ -225,6 +248,10 @@ def run():
                     job.status='C'
                     job.finish_time=datetime.datetime.today()
                     job.save()
+                    try:
+                        zip_up_dir(job)
+                    except:
+                        logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
                     try:
                         email_notify.send_email(job)
                     except:
@@ -241,6 +268,10 @@ def run():
         except Exception, e:
             logging.warning('Error preparing job for condor submission. Job: ' + str(job.id) + ', User: ' + str(job.user))
             logging.warning('Exception: ' + str(e))
+            try:
+                zip_up_dir(job)
+            except:
+                logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
     ############
 
     #Collate the results
@@ -259,6 +290,10 @@ def run():
                 job.last_update=datetime.datetime.today()
                 job.save()
                 model.get_so_results(save=True)
+                try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
                 try:
                     email_notify.send_email(job)
                 except:
@@ -287,6 +322,10 @@ def run():
                 job.finish_time = datetime.datetime.today()
                 job.save()
                 try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                try:
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
@@ -300,6 +339,10 @@ def run():
                 job.finish_time = datetime.datetime.today()
                 job.save()
                 try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                try:
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
@@ -311,6 +354,10 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
+                try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
             elif job.job_type == 'OD':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 output_files = [cj.job_output for cj in condor_jobs]
@@ -319,6 +366,10 @@ def run():
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
                 job.save()
+                try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
                 try:
                     email_notify.send_email(job)
                 except:
@@ -330,6 +381,10 @@ def run():
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
             job.save()
+            try:
+                zip_up_dir(job)
+            except:
+                logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
             try:
                 email_notify.send_email(job)
             except:

@@ -1,3 +1,4 @@
+#Rename this file to settings.py
 # Django settings for web_frontend project.
 import os.path
 import logging

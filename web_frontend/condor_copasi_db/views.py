@@ -810,7 +810,7 @@ def jobResultDownload(request, job_name):
 @login_required
 def jobDownload(request, job_name):
     """Generate a tar.bz2 file of the results directory, and return it"""
-    #Check to see if the tar.gz file exists already, if not create it
+    #Check to see if the tar.bz2 file exists already, if not create it
     try:
         job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
     except:
@@ -820,7 +820,7 @@ def jobDownload(request, job_name):
     except:
         return web_frontend_views.handle_error(request, 'Error Loading Model',[])
     filename = os.path.join(model.path, str(job.name) + '.tar.bz2')
-    if not os.path.isfile(filename) or True:
+    if not os.path.isfile(filename):
         import tarfile
         tar = tarfile.open(name=filename, mode='w:bz2')
         tar.add(model.path, job.name)

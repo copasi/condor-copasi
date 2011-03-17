@@ -816,8 +816,8 @@ class CopasiModel:
             filename = os.path.join(self.path, 'auto_copasi_' + str(i) + '.cps')
             self.model.write(filename)
             
-            #Also, write a file called filename.runs containing the number of runs per job
-            runs_file = open(filename + '.runs', 'w')
+            #Also, write a file called filename.runs.txt containing the number of runs per job
+            runs_file = open(filename + '.runs.txt', 'w')
             runs_file.write('Repeats per job:\n')
             runs_file.write(str(no_of_steps))
             runs_file.close()
