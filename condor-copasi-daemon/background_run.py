@@ -123,11 +123,11 @@ def run():
             job.status = 'E'
             job.last_update=datetime.datetime.today()
             job.finish_time=datetime.datetime.today()
-            job.save()
             try:
                 zip_up_dir(job)
             except:
                 logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+            job.save()
             try:
                 email_notify.send_email(job)
             except:
@@ -202,11 +202,11 @@ def run():
                 job.status='E'
                 job.finish_time=datetime.datetime.today()
                 job.last_update=datetime.datetime.today()
-                job.save()
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
                 try:
                     email_notify.send_email(job)
                 except:
@@ -231,11 +231,12 @@ def run():
                     job.status = 'E'
                     job.finish_time=datetime.datetime.today()
                     job.last_update=datetime.datetime.today()
-                    job.save()
+
                     try:
                         zip_up_dir(job)
                     except:
                         logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                    job.save()
                     try:
                         email_notify.send_email(job)
                     except:
@@ -247,11 +248,11 @@ def run():
                     #If the second stage of condor processing has finished, mark the job as complete
                     job.status='C'
                     job.finish_time=datetime.datetime.today()
-                    job.save()
                     try:
                         zip_up_dir(job)
                     except:
                         logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                    job.save()
                     try:
                         email_notify.send_email(job)
                     except:
@@ -288,12 +289,13 @@ def run():
                 job.status='C'
                 job.finish_time=datetime.datetime.today()
                 job.last_update=datetime.datetime.today()
-                job.save()
+
                 model.get_so_results(save=True)
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
                 try:
                     email_notify.send_email(job)
                 except:
@@ -320,11 +322,12 @@ def run():
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
-                job.save()
+
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
                 try:
                     email_notify.send_email(job)
                 except:
@@ -337,11 +340,12 @@ def run():
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
-                job.save()
+
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
                 try:
                     email_notify.send_email(job)
                 except:
@@ -353,11 +357,12 @@ def run():
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
-                job.save()
+
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
             elif job.job_type == 'OD':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 output_files = [cj.job_output for cj in condor_jobs]
@@ -365,11 +370,11 @@ def run():
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
-                job.save()
                 try:
                     zip_up_dir(job)
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
                 try:
                     email_notify.send_email(job)
                 except:
@@ -380,11 +385,11 @@ def run():
             job.status='E'
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
-            job.save()
             try:
                 zip_up_dir(job)
             except:
                 logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+            job.save()
             try:
                 email_notify.send_email(job)
             except:

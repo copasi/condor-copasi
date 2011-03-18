@@ -14,17 +14,17 @@ def send_email(job):
 
     if job.status == 'E':
         messageTextTemplate = Template("""Dear $username,
-The job $jobname ($jobtype) running on Condor-Copasi has failed.
+The job $jobname ($jobtype) running on Condor-COPASI has failed.
 Visit $webaddress to see more details.
 
-This is an automated message sent by Condor-Copasi, do not reply.
+This is an automated message sent by Condor-COPASI, do not reply.
         """)
     elif job.status == 'C':
         messageTextTemplate = Template("""Dear $username,
-The job $jobname ($jobtype) running on Condor-Copasi has completed successfully.
+The job $jobname ($jobtype) running on Condor-COPASI has completed successfully.
 Visit $webaddress to see more details, to view any output, and to download any results.
 
-This is an automated message sent by Condor-Copasi, do not reply.
+This is an automated message sent by Condor-COPASI, do not reply.
         """)
     else:
         return
@@ -33,7 +33,7 @@ This is an automated message sent by Condor-Copasi, do not reply.
         webaddress = "http://" + settings.SITE_DOMAIN + settings.SITE_SUBFOLDER.rstrip('/') + reverse('job_details', args=[job.name])
         messageText=messageTextTemplate.substitute(username=job.user.username, jobname=job.name, jobtype=job.get_job_type_display(), webaddress=webaddress)
         msg = MIMEText(messageText)
-        msg['Subject'] = 'Condor-Copasi Notification: Job ' + job.name
+        msg['Subject'] = 'Condor-COPASI Notification: Job ' + job.name
         msg['From'] = sender
         msg['To'] = receiver
 
