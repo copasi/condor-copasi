@@ -37,7 +37,7 @@ class UploadModelForm(forms.Form):
         super(UploadModelForm, self).__init__(*args, **kwargs)
 
     model_file = forms.FileField()
-    job_name = forms.CharField(max_length=64, label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
+    job_name = forms.RegexField(max_length=64, regex=re.compile(r'^(a-z|A-Z|0-9)*[^%]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
     
     def clean_job_name(self):
         job_name = self.cleaned_data['job_name']
