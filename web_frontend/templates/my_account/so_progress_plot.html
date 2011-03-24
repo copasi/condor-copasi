@@ -9,7 +9,7 @@
 <div class = "plot">
 <img src="{% url so_progress_plot job.name %}{{img_string}}" alt="Plot">
 <br>
-<form action="{% url so_progress_page job.name %}{{img_string}}" method="post">
+<form action="{% url so_progress_plot job.name %}{{img_string}}" method="post">
 {% csrf_token %}
 <input type="submit" name="download_png" value="Download in .PNG Format">
 <input type="submit" name="download_svg" value="Download in .SVG Format">
