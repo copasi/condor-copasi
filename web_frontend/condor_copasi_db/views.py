@@ -1,5 +1,5 @@
 from django.shortcuts import render_to_response, redirect
-import datetime, os, shutil, re
+import datetime, os, shutil, re, math
 from django import forms
 from django.db import IntegrityError
 from django.contrib.auth.models import User
@@ -173,7 +173,24 @@ class PlotUpdateForm(forms.Form):
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
 
+#form to update the SO progress plots
+class SOPlotUpdateForm(forms.Form):
+    """Form containing controls to update plots"""
+    
+    def __init__(self, *args, **kwargs):
+        variables = kwargs.pop('variable_choices', None)
+        variable_choices = []
+        for i in range(len(variables)):
+            variable_choices.append((i, variables[i]))
 
+        super(SOPlotUpdateForm, self).__init__(*args, **kwargs)
+        self.fields['variables'].choices = variable_choices
+        
+    legend = forms.BooleanField(label='Show figure legend', required=False, initial=False)
+    grid = forms.BooleanField(label='Show grid', required=False, initial=True)
+    logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
+    variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
+    
 class ChangePasswordForm(forms.Form):
     """Form for allowing a user to change their password. Checks that the old password is valid, and the new passwords match"""
     old_password = forms.CharField(label='Current password',widget=forms.PasswordInput(render_value=False))
@@ -718,6 +735,14 @@ def jobOutput(request, job_name):
     
     if job.job_type == 'SO':
         results = model.get_so_results()
+        for i in range(len(results)):
+            #Calculate url for progress plot for min and max
+            min_param_index = i*2
+            max_param_index = (i*2) + 1
+            results[i]['url_min'] = reverse('so_progress_page', args=[job.name]) + '?custom=true&variables='+str(min_param_index)
+            results[i]['url_max'] = reverse('so_progress_page', args=[job.name]) + '?custom=true&variables='+str(max_param_index)
+            results[i]['url_min_max'] = reverse('so_progress_page', args=[job.name]) + '?custom=true&variables='+str(min_param_index)+'&variables='+str(max_param_index)
+        all_plots_url=reverse('so_progress_page', args=[job.name])
         
     #If displaying a plot, check for GET options
     if job.job_type == 'SS':
@@ -932,3 +957,186 @@ def ss_plot(request, job_name):
     except:
         raise
 
+@login_required
+def so_progress_plot(request, job_name):
+    """Return the plot image for the progress of a single sensitivity optimization parameter"""
+
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    
+    try:
+        assert job.status == 'C' and job.job_type=='SO'
+        results = model.get_so_results()
+        #Get parameter names, min and max
+        variable_choices = []
+        for result in results:
+            variable_choices.append(result['name'] + '_min')
+            variable_choices.append(result['name'] + '_max')
+
+    except:
+        raise
+        return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
+    try:
+        os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
+        import matplotlib
+        matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
+        import matplotlib.pyplot as plt
+
+        #Look at the GET data to see what chart options have been set:
+        get_variables = request.GET.get('variables')
+        log = request.GET.get('log', 'false')
+
+        legend = request.GET.get('legend', 'false')
+        grid = request.GET.get('grid', 'false')
+        
+        #Check to see if we should return as an attachment in .png or .svg or .eps
+        download_png = 'download_png' in request.POST
+        download_svg = 'download_svg' in request.POST
+        download_eps = 'download_eps' in request.POST
+        try:
+            variables = map(int, get_variables.split(','))
+            assert max(variables) < len(variable_choices)
+        except:
+            raise
+            variables = range(len(variable_choices))
+        
+        matplotlib.rc('font', size=8)
+        fig = plt.figure()
+#        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
+        plt.xlabel('Iterations')
+        plt.ylabel('Optimization value')
+        
+        color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']        
+        
+        j=0 #used to keep cycle through colors in order
+        for i in variables:
+            #Go through each result and plot the progress
+            label = variable_choices[i]
+            
+            #Check if we're plotting a min or a max. Min will be all even numbers, max all odd
+            file_index = int(math.floor(i/2))
+            if i%2 == 0:
+                filename = os.path.join(job.get_path(), 'min_' + str(file_index) + '.txt')
+            else:
+                filename = os.path.join(job.get_path(), 'max_' + str(file_index) + '.txt')
+            all_evals=[]
+            all_values=[]
+            linenumber=0
+            #Go through line by line; lines repeat every 4th line
+            for line in open(filename, 'r'):
+                if linenumber%4 == 0:
+                    pass
+                elif linenumber%4 == 1:
+                    evals = int(line.split()[2]) # Extract number from 'Evals = n'
+                    all_evals.append(evals)
+                elif linenumber%4 == 2:
+                    pass
+                    #time = float(line.split()[2])
+                elif linenumber%4 == 3:
+                    value = float(line)
+                    all_values.append(value)
+
+                linenumber += 1
+            #Plot the progress
+            plt.plot(all_evals, all_values, lw=1, label=label, color=color_list[j%len(color_list)])
+            
+            j+=1
+        #Set a logarithmic scale if requested
+        if log != 'false':
+            plt.yscale('log')
+        if legend != 'false':
+            plt.legend(loc=0, )
+        if grid != 'false':
+            plt.grid(True)
+            
+        plt.show()
+            
+            
+            
+        if download_png:    
+            response = HttpResponse(mimetype='image/png', content_type='image/png')
+            fig.savefig(response, format='png', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.png'
+        elif download_svg:
+            response = HttpResponse(mimetype='image/svg', content_type='image/svg')
+            fig.savefig(response, format='svg', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
+        elif download_eps:
+            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
+            fig.savefig(response, format='eps', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        else:    
+            response = HttpResponse(mimetype='image/png', content_type='image/png')
+            fig.savefig(response, format='png', transparent=False, dpi=120)
+        return response
+    except:
+        raise
+        
+@login_required
+def so_progress_page(request, job_name):
+    """Page for displaying a plot containing so optimization progress"""
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    job_remove_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
+    
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+        
+    if job.status != 'C':
+        return web_frontend_views.handle_error(request, 'Cannot Display Output',['The requested job has not completed yet'])
+        
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    
+    try:
+        assert job.job_type == 'SO'
+        results = model.get_so_results()
+        #Get parameter names, min and max
+        variable_choices = []
+        for result in results:
+            variable_choices.append(result['name'] + '_min')
+            variable_choices.append(result['name'] + '_max')
+    except:
+        return web_frontend_views.handle_error(request, 'Error reading results',['An error occured while trying to processs the job output'])
+    
+    #If the variables GET field hasn't been set, preset it to all variables
+    
+    try:
+        assert request.GET.get('custom') == 'true'
+        form=SOPlotUpdateForm(request.GET, variable_choices=variable_choices)
+    except:
+        form=SOPlotUpdateForm(variable_choices=variable_choices, initial={'variables' : range(len(variable_choices))})
+    
+    if form.is_valid():
+        variables = map(int,form.cleaned_data['variables'])
+        log = form.cleaned_data['logarithmic']
+        legend = form.cleaned_data['legend']
+        grid = form.cleaned_data['grid']
+    else:
+        variables=range(len(variable_choices))
+        log=False
+        legend=False
+        grid=True
+        
+    #construct the string to load the image file
+    img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
+    if log:
+        img_string += '&log=true'
+    if legend:
+        img_string += '&legend=true'
+    if grid:
+        img_string += '&grid=true'
+    
+    pageTitle = 'Optimization Progress: ' + str(job.name)
+    return render_to_response('my_account/so_progress_plot.html', locals(), RequestContext(request))

@@ -8,13 +8,15 @@
 {% if job.job_type == 'SO' %}
 <div class = "review">
     <p><h3>Sensitivities calculated against parameter: <b>{{model.get_sensitivities_object}}</b></h3></p>
+    <p>Click on the name of a parameter, or an optimization value, to view optimization progress</p>
+    <p><a href="{{all_plots_url}}">Click here</a> to view optimization progress for all parameters</p>
     <table>
         <tr><th>Parameter</th><th>Minimum value</th><th>Maximum value</th><th>Min CPU time</th><th>Min evals</th><th>Max CPU time</th><th>Max Evals</th></tr>
         {% for result in results %}
         <tr>
-            <td><b>{{result.name}}</b></td>
-            <td>{{result.min_result}}</td>
-            <td>{{result.max_result}}</td>
+            <td><b><a href="{{result.url_min_max}}">{{result.name}}</a></b></td>
+            <td><a href="{{result.url_min}}">{{result.min_result}}</a></td>
+            <td><a href="{{result.url_max}}">{{result.max_result}}</a></td>
             <td>{{result.min_cpu}}</td>
             <td>{{result.min_evals}}</td>
             <td>{{result.max_cpu}}</td>

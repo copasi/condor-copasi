@@ -1,0 +1,28 @@
+{% extends "my_account/job_output.html" %}
+
+
+{% block breadcrumbs_l5 %} <a href="{% url so_progress_page job.name %}">Optimization Progess</a> &gt;&gt;{%block breadcrumbs_l6%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+
+<div class = "plot">
+<img src="{% url so_progress_plot job.name %}{{img_string}}" alt="Plot">
+<br>
+<form action="{% url so_progress_page job.name %}{{img_string}}" method="post">
+{% csrf_token %}
+<input type="submit" name="download_png" value="Download in .PNG Format">
+<input type="submit" name="download_svg" value="Download in .SVG Format">
+<input type="submit" name="download_eps" value="Download in .EPS Format">
+</form>
+</div>
+
+<form action="" method="get">
+<input type="hidden" name="custom" value="true">
+<table class="formtable">
+{{form.as_table}}
+</table>
+<input type="submit" value="Update plot">
+</form>
+
+{% endblock %}
