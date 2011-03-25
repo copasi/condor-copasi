@@ -1,0 +1,37 @@
+{% extends "my_account/my_account.html" %}
+
+
+{% block head %}
+{# Motionchart javascript code here #}
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load('visualization', '1', {'packages':['motionchart']});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Parameter');
+        data.addColumn('number', 'Range');
+        data.addColumn('number', 'Value');
+        data.addRows([{{motionchart_data|safe}}]);
+        var chart = new google.visualization.MotionChart(document.getElementById('chart_div'));
+
+        var options = {};
+        options['state'] = '{"xAxisOption":"_ALPHABETICAL","iconType":"VBAR","xLambda":1,"duration":{"multiplier":1,"timeUnit":"Y"},"showTrails":false,"orderedByY":false,"colorOption":"_UNIQUE_COLOR","yZoomedDataMax":1300,"xZoomedDataMax":60,"xZoomedIn":false,"time":"1902","yLambda":1,"yZoomedDataMin":-3000,"sizeOption":"_UNISIZE","xZoomedDataMin":0,"playDuration":15000,"iconKeySettings":[],"nonSelectedAlpha":0.4,"orderedByX":true,"yZoomedIn":false,"dimensions":{"iconDimensions":["dim0"]},"uniColorForNonSelected":false,"yAxisOption":"2"};';
+        options['width'] = 900;
+        options['height'] = 600;
+        chart.draw(data, options);
+      }
+    </script>
+
+{% endblock %}
+
+
+{% block breadcrumbs_l3 %} <a href="{% url so_compare %}">Compare Sensitivities </a> &gt;&gt;{%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+
+<div class = "plot">
+    <div id="chart_div"></div>
+</div>
+{% endblock %}

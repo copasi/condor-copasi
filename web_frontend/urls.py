@@ -41,6 +41,7 @@ urlpatterns = patterns('',
     url(r'^my_account/jobs/details/(?P<job_name>.+)/output/$', db.jobOutput, name="job_output"),
     url(r'^my_account/jobs/details/(?P<job_name>.+)/remove/$', db.jobRemove, name="job_remove"),
     url(r'^my_account/jobs/details/(?P<job_name>.+)/$', db.jobDetails, name="job_details"),
+    url(r'^my_account/jobs/compare/so/$', db.compareSOJobs, name="so_compare"),
     url(r'^help/$', helpPage, name="help"),
 )
 

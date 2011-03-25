@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
 import web_frontend.condor_copasi_db.views
-from web_frontend import settings, condor_log
+from web_frontend import settings, condor_log, motionchart
 from web_frontend.condor_copasi_db import models
 from web_frontend import views as web_frontend_views
 from web_frontend.copasi.model import CopasiModel
@@ -1140,3 +1140,68 @@ def so_progress_page(request, job_name):
     
     pageTitle = 'Optimization Progress: ' + str(job.name)
     return render_to_response('my_account/so_progress_plot.html', locals(), RequestContext(request))
+    
+    
+    
+    
+    
+    
+#Class for holding information about SO jobs to compare
+class SOCompareForm(forms.Form):
+
+    def __init__(self, list_of_job_ids, *args, **kwargs):
+        
+        super(SOCompareForm, self).__init__(*args, **kwargs)
+        for i in list_of_job_ids:
+            self.fields['%d_selected' % i] = forms.BooleanField(required=False)
+            self.fields['%d_quantification' % i] = forms.FloatField(required=True, initial=0.0)
+
+    
+@login_required
+def compareSOJobs(request):
+    pageTitle = 'Compare Global Sensitivity Job Output'
+    submitted_job_count = len(models.Job.objects.filter(user=request.user, status='S') | models.Job.objects.filter(user=request.user, status='N') | models.Job.objects.filter(user=request.user, status='W') | models.Job.objects.filter(user=request.user, status='X'))
+    completed_job_count = len(models.Job.objects.filter(user=request.user, status='C'))
+    error_count = len(models.Job.objects.filter(user=request.user, status='E'))
+    
+    so_jobs = models.Job.objects.filter(user=request.user, status='C', job_type='SO')
+    so_job_count=len(so_jobs)
+    
+
+    job_id_list = [job.id for job in so_jobs]
+
+    if request.method == 'POST':
+        #populate the form
+        form = SOCompareForm(job_id_list, request.POST)
+        if form.is_valid():
+            #Generate appropriate output
+            #First, check which job id's we're comparing
+            compare_jobs=[]
+            for job in so_jobs:
+                if form.cleaned_data['%d_selected' % job.id]:
+                    compare_jobs.append((job,form.cleaned_data['%d_quantification' % job.id]))
+                    
+            if len(compare_jobs) > 0:
+                try:
+                    motionchart_data = motionchart.prepare_data(compare_jobs)
+                    return render_to_response('my_account/so_motionchart.html', locals(), RequestContext(request))
+                    
+                    
+                except:
+                    return web_frontend_views.handle_error(request, 'Error reading results',['An error occured while trying to processs the job output'])
+                    
+            
+    else:
+        form = SOCompareForm(job_id_list)
+        
+        
+    jobs=[]
+    
+    
+    
+    for job in so_jobs:
+        condor_jobs = models.CondorJob.objects.filter(parent=job)
+        jobs.append((job, condor_jobs, form['%d_selected' % job.id], form['%d_quantification' % job.id]))
+        
+    return render_to_response('my_account/so_compare.html', locals(), RequestContext(request))
+

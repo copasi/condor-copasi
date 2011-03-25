@@ -1,0 +1,59 @@
+{% extends "my_account/my_account.html" %}
+
+{% block breadcrumbs_l3 %} <a href="{% url so_compare %}">Compare Sensitivities</a> &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
+
+{% block body %}
+
+{% if so_job_count == 0 %}
+
+<p>You currently have no Sensitivity Optimization jobs stored on the system.
+
+{% else %}
+
+<p>Select one or more jobs to compare.
+<p>
+<form action="" method="post" enctype="multipart/form-data">
+{{ form.non_field_errors }}
+
+{% csrf_token %}
+<table class="jobtable">
+    <tr>
+        <th>Compare?</th>
+        <th>Variation?</th>
+        <th>Job name</th>
+        <th>Job type</th>
+        <th>Runs</th>
+        <th>Number of condor jobs</th>
+        <th>Finish time</th>
+    </tr>
+    {% for job, condor_jobs, job_select_field, job_quantification_field in jobs %}
+
+    <tr>
+        <td>
+            <div class="fieldWrapper">
+                {{ job_select_field.errors }}
+                {{ job_select_field }}
+            </div>
+        </td>
+        <td>
+            <div class="fieldWrapper">
+                {{ job_quantification_field.errors }}
+                {{ job_quantification_field }}
+            </div>
+        </td>
+        <td><a href="{% url job_details job.name %}">{{job.name}}</a></td>
+        <td>{{job.get_job_type_display}}</td>
+        <td>{% if job.runs != None %}{{job.runs}}{% endif %}</td>
+        <td>{{condor_jobs|length}}</td>
+        <td>{{job.finish_time}}</td>
+    </tr>
+    {% endfor %}
+    
+</table>
+
+<p><input type="submit" value="Compare" /></p>
+
+
+</form>
+{% endif %}
+{% endblock %}
