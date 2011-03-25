@@ -1154,7 +1154,7 @@ class SOCompareForm(forms.Form):
         super(SOCompareForm, self).__init__(*args, **kwargs)
         for i in list_of_job_ids:
             self.fields['%d_selected' % i] = forms.BooleanField(required=False)
-            self.fields['%d_quantification' % i] = forms.FloatField(required=True, initial=0.0)
+            self.fields['%d_quantification' % i] = forms.IntegerField(required=True, initial=0, min_value=0, max_value=99)
 
     
 @login_required
