@@ -145,7 +145,7 @@ def run():
         condor_q=[]
         no_of_jobs = len(condor_q_output) - 6
         if no_of_jobs > 0:
-            job_string = r'(?P<id>\d+)\.0\s+(?P<owner>\S+)\s+(?P<sub_date>\S+)\s+(?P<sub_time>\S+)\s+(?P<run_time>\S+)\s+(?P<status>\w)\s+(?P<pri>\d+)\s+(?P<size>\S+)\s+(?P<cmd>\S+)'
+            job_string = r'\s*(?P<id>\d+)\.0\s+(?P<owner>\S+)\s+(?P<sub_date>\S+)\s+(?P<sub_time>\S+)\s+(?P<run_time>\S+)\s+(?P<status>\w)\s+(?P<pri>\d+)\s+(?P<size>\S+)\s+(?P<cmd>\S+)'
             job_re = re.compile(job_string)
             for job_listing in condor_q_output:
                 match = job_re.match(job_listing)
