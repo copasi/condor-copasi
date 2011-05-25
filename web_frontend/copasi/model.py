@@ -337,7 +337,7 @@ class CopasiModel:
         return scan_number
         
     
-    def __create_report(self, report_type, report_key):
+    def __create_report(self, report_type, report_key, report_name):
         """Create a report for a particular task, e.g. sensitivity optimization, with key report_key
         
         report_type: a string representing the job type, e.g. SO for sensitivity optimization"""
@@ -352,11 +352,21 @@ class CopasiModel:
         if foundReport:
             listOfReports.remove(foundReport)
 
+        #Next, look through and check to see if a report with the report_name already exists. If it does, delete it
+        
+        listOfReports = self.model.find(xmlns + 'ListOfReports')
+        foundReport = False
+        for report in listOfReports:
+            if report.attrib['name'] == report_name:
+                foundReport = report
+        if foundReport:
+            listOfReports.remove(foundReport)
+
         if report_type == 'SO':
 
             newReport = etree.SubElement(listOfReports, xmlns + 'Report')
             newReport.set('key', report_key)
-            newReport.set('name', report_key)
+            newReport.set('name', report_name)
             newReport.set('taskType', 'optimization')
             newReport.set('seperator', '&#x09;')
             newReport.set('precision', '6')
@@ -417,7 +427,7 @@ class CopasiModel:
         elif report_type == 'SS':
             #Use the following xml string as a template
             report_string = Template(
-            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="auto_ss_report" taskType="timeCourse" separator="&#x09;" precision="6">
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="${report_name}" taskType="timeCourse" separator="&#x09;" precision="6">
       <Comment>
         A table of time, variable species particle numbers, variable compartment volumes, and variable global quantity values.
       </Comment>
@@ -425,7 +435,7 @@ class CopasiModel:
         
       </Table>
     </Report>"""
-            ).substitute(report_key=report_key)
+            ).substitute(report_key=report_key, report_name=report_name)
             report = etree.XML(report_string)
             model_name = self.get_name()
             
@@ -442,7 +452,7 @@ class CopasiModel:
         elif report_type == 'OR':
             #Use the following xml string as a template
             report_string = Template(
-            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="auto_or_report" taskType="optimization" separator="&#x09;" precision="6">
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="${report_name}" taskType="optimization" separator="&#x09;" precision="6">
       <Comment>
         
       </Comment>
@@ -453,7 +463,7 @@ class CopasiModel:
         <Object cn="CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Reference=Function Evaluations"/>
       </Table>
     </Report>"""
-            ).substitute(report_key=report_key)
+            ).substitute(report_key=report_key, name=report_name)
             report = etree.XML(report_string)
                         
             listOfReports.append(report)
@@ -461,7 +471,7 @@ class CopasiModel:
         elif report_type == 'PR':
             #Use the following xml string as a template
             report_string = Template(
-            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="auto_pr_report" taskType="parameterFitting" separator="&#x09;" precision="6">
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="${report_name}" taskType="parameterFitting" separator="&#x09;" precision="6">
 <Comment>
         Condor Copasi automatically generated report.
       </Comment>
@@ -472,7 +482,7 @@ class CopasiModel:
         <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Function Evaluations"/>
       </Table>
     </Report>"""
-            ).substitute(report_key=report_key)
+            ).substitute(report_key=report_key, report_name=report_name)
             report = etree.XML(report_string)
             
             listOfReports.append(report)
@@ -550,7 +560,7 @@ class CopasiModel:
         ############
         #Create a new report for the optimization task
         report_key = 'condor_copasi_sensitivity_optimization_report'
-        self.__create_report('SO', report_key)
+        self.__create_report('SO', report_key, report_key)
         
         #And set the new report for the optimization task
         report = optTask.find(xmlns + 'Report')
@@ -719,7 +729,7 @@ class CopasiModel:
         ############
         #Create a new report for the ss task
         report_key = 'condor_copasi_stochastic_simulation_report'
-        self.__create_report('SS', report_key)
+        self.__create_report('SS', report_key, 'auto_ss_report')
         
         #And set the new report for the ss task
         timeReport = timeTask.find(xmlns + 'Report')
@@ -1257,7 +1267,7 @@ queue\n""")
         #Even though we're not interested in the output at the moment, we have to set a report for the optimization task, or Copasi will complain!
         #Create a new report for the or task
         report_key = 'condor_copasi_optimization_repeat_report'
-        self.__create_report('OR', report_key)
+        self.__create_report('OR', report_key, 'auto_or_report')
         
         #And set the new report for the or task
         optReport = optTask.find(xmlns + 'Report')
@@ -1533,7 +1543,7 @@ queue\n""")
         #Even though we're not interested in the output at the moment, we have to set a report for the parameter fitting task, or Copasi will complain!
         #Create a new report for the or task
         report_key = 'condor_copasi_parameter_fitting_repeat_report'
-        self.__create_report('PR', report_key)
+        self.__create_report('PR', report_key, 'auto_pr_report')
         
         #And set the new report for the or task
         fitReport = fitTask.find(xmlns + 'Report')
@@ -1816,7 +1826,7 @@ queue\n""")
         
         #Create a new report for the or task
         report_key = 'condor_copasi_optimization_report'
-        self.__create_report('OR', report_key)
+        self.__create_report('OR', report_key, 'auto_or_report')
         
         #And set the new report for the or task
         report = optTask.find(xmlns + 'Report')
