@@ -1527,7 +1527,7 @@ queue\n""")
         return output
         
         
-    def prepare_pr_jobs(self, repeats, skip_load_balancing=False):
+    def prepare_pr_jobs(self, repeats, skip_load_balancing=False, custom_report=False):
         """Prepare jobs for the parameter estimation repeat task"""
         
         
@@ -1541,19 +1541,27 @@ queue\n""")
         fitTask.attrib['updateModel'] = 'false'
         
         #Even though we're not interested in the output at the moment, we have to set a report for the parameter fitting task, or Copasi will complain!
-        #Create a new report for the or task
-        report_key = 'condor_copasi_parameter_fitting_repeat_report'
-        self.__create_report('PR', report_key, 'auto_pr_report')
-        
+        #Only do this if custom_report is false
+        if not custom_report:
+            #Create a new report for the or task
+            report_key = 'condor_copasi_parameter_fitting_repeat_report'
+            self.__create_report('PR', report_key, 'auto_pr_report')
+            
         #And set the new report for the or task
         fitReport = fitTask.find(xmlns + 'Report')
+    
+        if custom_report:
+            custom_report_key = fitReport.attrib['reference']
+    
     
         #If no report has yet been set, report == None. Therefore, create new report
         if fitReport == None:
             fitReport = etree.Element(xmlns + 'Report')
             fitTask.insert(0,fitReport)
         
-        fitReport.set('reference', report_key)
+        if not custom_report:
+            fitReport.set('reference', report_key)
+    
         fitReport.set('append', '1')
         fitReport.set('target', 'copasi_temp_output.txt')        
 
@@ -1613,7 +1621,10 @@ queue\n""")
             report = etree.Element(xmlns + 'Report')
             scanTask.insert(0,report)
         
-        report.set('reference', report_key)
+        if custom_report:
+            report.set('reference', custom_report_key)
+        else:
+            report.set('reference', report_key)
         report.set('append', '1')
         
         #Prepare the scan task
@@ -1720,7 +1731,7 @@ queue\n""")
 
         return condor_jobs
         
-    def process_pr_results(self, jobs):
+    def process_pr_results(self, jobs, custom_report=False):
         """Process the results of the PR task by copying them all into one file, named raw_results.txt.
         As we copy, extract the best value, and write the details to results.txt"""
         
@@ -1732,7 +1743,7 @@ queue\n""")
         last_line = ''
         #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0   100
         #Contains parameter values, the best optimization value, the cpu time, and some other values, e.g. particle numbers that Copasi likes to add. These could be removed, but they seem useful.
-        output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
+        output_string = r'.*\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
         output_re = re.compile(output_string)
         
         best_value = None
@@ -1741,17 +1752,23 @@ queue\n""")
         #Copy the contents of the first file to results.txt
         for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
             output_file.write(line)
-            if line == '\n':
-                last_value = output_re.match(last_line).groupdict()['best_value']
-                if best_value != None:
-                    if last_value < best_value:
+            try:
+                if line == '\n':
+                    last_value = output_re.match(last_line).groupdict()['best_value']
+                    if best_value != None:
+                        if last_value < best_value:
+                            best_value = last_value
+                            best_line = last_line
+                    elif best_value == None:
                         best_value = last_value
                         best_line = last_line
-                elif best_value == None:
-                    best_value = last_value
-                    best_line = last_line
-            else:
-                last_line = line
+                else:
+                    last_line = line
+            except:
+                if custom_report:
+                    pass
+                else:
+                    raise
                 
         #And for all other files, copy everything but the last line
         for i in range(jobs)[1:]:
@@ -1759,13 +1776,19 @@ queue\n""")
             for line in open(os.path.join(self.path, str(i) + '_out.txt'), 'r'):
                 if not firstLine:
                     output_file.write(line)
-                    if line == '\n':
-                        last_value = output_re.match(last_line).groupdict()['best_value']
-                        if last_value < best_value:
-                            best_value = last_value
-                            best_line = last_line
-                    else:
-                        last_line = last_line
+                    try:
+                        if line == '\n':
+                            last_value = output_re.match(last_line).groupdict()['best_value']
+                            if last_value < best_value:
+                                best_value = last_value
+                                best_line = last_line
+                        else:
+                            last_line = last_line
+                    except:
+                        if custom_report:
+                            pass
+                        else:
+                            raise
                 firstLine = False
                 
                 

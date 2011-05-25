@@ -66,7 +66,7 @@ class StochasticUploadModelForm(UploadModelForm):
 #Form for the parameter estimation task. Adds one more file field
 class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
     parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
-
+    custom_report = forms.BooleanField(label='Use a custom report', help_text='Select this to use a custom report instead of the automatically generated one. If you select this, Condor-COPASI may not be able to process the output data, and the job will fail. However, you will still be able download the unprocessed results for manual processing. For output processing to work, you must create a report with custom fields added before the fields that would otherwise be automatically generated (Best Parameters, Best Value, CPU Time and Function Evaluations).', required=False)
 
 #Forms for the optimization repeat w/different algorithms task
 class CurrentSolutionStatisticsForm(forms.Form):
@@ -401,6 +401,9 @@ def newTask(request, type):
                     else:
                         runs = None
                     job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=form.cleaned_data['skip_load_balancing'])
+                    
+                    if type=='PR':
+                        job.custom_report = form.cleaned_data['custom_report']
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
                     user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))

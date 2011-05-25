@@ -97,7 +97,7 @@ def run():
                 condor_jobs = model.prepare_or_condor_jobs(no_of_jobs)
                 
             elif job.job_type == 'PR':
-                no_of_jobs = model.prepare_pr_jobs(job.runs, skip_load_balancing=job.skip_load_balancing)
+                no_of_jobs = model.prepare_pr_jobs(job.runs, skip_load_balancing=job.skip_load_balancing, custom_report=job.custom_report)
                 condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs)
             elif job.job_type == 'OD':
                 #No need to prepare the job. This was done as the job was submitted
@@ -353,7 +353,7 @@ def run():
             elif job.job_type == 'PR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
-                model.process_pr_results(no_of_jobs)
+                model.process_pr_results(no_of_jobs, custom_report=job.custom_report)
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
