@@ -85,19 +85,19 @@ def run():
             if job.job_type == 'SO':
                 condor_jobs = model.prepare_so_condor_jobs()
             elif job.job_type == 'SS':
-                no_of_jobs = model.prepare_ss_task(job.runs)
+                no_of_jobs = model.prepare_ss_task(job.runs, skip_load_balancing=job.skip_load_balancing)
                 condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
                 
             elif job.job_type == 'PS':
-                no_of_jobs = model.prepare_ps_jobs()
+                no_of_jobs = model.prepare_ps_jobs(skip_load_balancing=job.skip_load_balancing)
                 condor_jobs = model.prepare_ps_condor_jobs(no_of_jobs)
                 
             elif job.job_type == 'OR':
-                no_of_jobs = model.prepare_or_jobs(job.runs)
+                no_of_jobs = model.prepare_or_jobs(job.runs, skip_load_balancing=job.skip_load_balancing)
                 condor_jobs = model.prepare_or_condor_jobs(no_of_jobs)
                 
             elif job.job_type == 'PR':
-                no_of_jobs = model.prepare_pr_jobs(job.runs)
+                no_of_jobs = model.prepare_pr_jobs(job.runs, skip_load_balancing=job.skip_load_balancing)
                 condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs)
             elif job.job_type == 'OD':
                 #No need to prepare the job. This was done as the job was submitted

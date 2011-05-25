@@ -48,6 +48,11 @@ class Job(models.Model):
     #May seem redundant, but exists to allow multiple unconfirmed jobs with the same name
     submitted = models.NullBooleanField(null=True)
     
+    #Added in version 0.2.2 - set option to automatically skip load balancing step, and instead run largest number of parallel jobs possible
+    #Update the table condor_copasi_db_job as follows in psql:
+    #ALTER TABLE condor_copasi_db_job ADD COLUMN skip_load_balancing boolean;
+    skip_load_balancing = models.NullBooleanField(null=True)
+    
     class Meta:
         unique_together = ('user', 'name', 'submitted')
         ordering = ['-last_update']

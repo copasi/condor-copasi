@@ -35,9 +35,12 @@ class UploadModelForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
         super(UploadModelForm, self).__init__(*args, **kwargs)
-
+        
     model_file = forms.FileField()
     job_name = forms.RegexField(max_length=64, regex=re.compile(r'^(a-z|A-Z|0-9)*[^%]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
+    
+    #Checkbox to give the user the option to skip the load balancing step
+    skip_load_balancing = forms.BooleanField(label='Skip load balancing step', help_text='Select this to skip the automatic load balancing step, and make the run time of each parallel job as short as possible. <b>Use with caution! This has the potential to overload the Condor system with huge numbers of parallel jobs.</b> Not applicable for some job types - see documentation for further details.', required=False)
     
     def clean_job_name(self):
         job_name = self.cleaned_data['job_name']
@@ -397,7 +400,7 @@ def newTask(request, type):
                         runs = algorithms_selected # Use runs in this instance as a cound of the number of algorithms we're running
                     else:
                         runs = None
-                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today())
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=form.cleaned_data['skip_load_balancing'])
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
                     user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))

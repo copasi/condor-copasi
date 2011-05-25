@@ -692,11 +692,11 @@ class CopasiModel:
 
 
 
-    def prepare_ss_task(self, runs):
+    def prepare_ss_task(self, runs, skip_load_balancing=False):
         """Prepares the temp copasi files needed to run n stochastic simulation runs
         
         First sets up the scan task with a repeat, and sets each repeat to run i times. 
-        Uses a the chiunking algorithm to determine how many repeats to run for each scan.
+        Uses a the load balancing algorithm to determine how many repeats to run for each scan.
         """ 
         
         ############
@@ -734,22 +734,27 @@ class CopasiModel:
         timeReport.set('target', 'temp_output.txt')
         
         self.model.write(temp_filename)
-        
-        #Note the start time
-        start_time = time.time()
-        self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
-        finish_time = time.time()
-        time_per_step = finish_time - start_time
-        
-        os.remove(temp_filename)
-        
-        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds) (or whatever the settings parameter is set to)
-        #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
-        
-        time_per_job = settings.IDEAL_JOB_TIME * 60
-        
-        #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
-        repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), runs)
+            
+            
+        if not skip_load_balancing: #We can skip the load balancing step entirely if requested
+            #Note the start time
+            start_time = time.time()
+            self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+            finish_time = time.time()
+            time_per_step = finish_time - start_time
+            
+            os.remove(temp_filename)
+            
+            #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds) (or whatever the settings parameter is set to)
+            #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+            
+            time_per_job = settings.IDEAL_JOB_TIME * 60
+            
+            #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+            repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), runs)
+            
+        else: #Otherwise, skip the load balancing step entirely, and simply use 1 repeat per job
+            repeats_per_job = 1
         
         no_of_jobs = int(math.ceil(float(runs) / repeats_per_job))        
 
@@ -998,7 +1003,7 @@ queue\n""")
                     
         return output
         
-    def prepare_ps_jobs(self):
+    def prepare_ps_jobs(self, skip_load_balancing=False):
         """Prepare the parallel scan task
         
         Efficiently splitting multiple nested scans is a hard problem, and currently beyond the scope of this project.
@@ -1071,46 +1076,50 @@ queue\n""")
         ############
         #Measure the time taken to run a single run of the first-level scan
         report.attrib['target'] = 'temp_output.txt'
-        import tempfile
-        #Set the number of steps as 1, and write a temp XML file
-        
-        #Do this 5 times, and take the average
-        
-        run_times = []
-        for i in range(5):
-            temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
-            tempdir, rel_filename = os.path.split(temp_filename)
 
-            parameters['no_of_steps'].attrib['value'] = '1'
+        if not skip_load_balancing:
+            import tempfile
+            #Set the number of steps as 1, and write a temp XML file
             
-            self.model.write(temp_filename)
+            #Do this 5 times, and take the average
             
-            #Note the start time
-            start_time = time.time()
-            self.__copasiExecute(temp_filename, tempdir, timeout=600)
-            finish_time = time.time()
-            run_time = finish_time - start_time
-            run_times.append(run_time)
-            
-            os.remove(temp_filename)
-            #If running for >10 seconds, assume this is a good enough measure, and don't take any more averages to save time
-            if run_time > 10:
-                break
-        #Calculate the mean
-        time_per_step = sum(run_times)/len(run_times)
-        
-        #If this was a scan task, not a repeat, then we'll have actually run two steps, not one. Adjust the time accordingly
-        if task_type == 1:
-            time_per_step = time_per_step/2
-        
-        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
-        #time_per_job = no_of_steps * time_per_step => no_of_steps = time_per_job/time_per_step
-        
-        time_per_job = settings.IDEAL_JOB_TIME * 60
-        
-        #Calculate the number of steps for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
-        no_of_steps_per_job = min(int(round(float(time_per_job) / time_per_step)), no_of_steps)
+            run_times = []
+            for i in range(5):
+                temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
+                tempdir, rel_filename = os.path.split(temp_filename)
 
+                parameters['no_of_steps'].attrib['value'] = '1'
+                
+                self.model.write(temp_filename)
+                
+                #Note the start time
+                start_time = time.time()
+                self.__copasiExecute(temp_filename, tempdir, timeout=600)
+                finish_time = time.time()
+                run_time = finish_time - start_time
+                run_times.append(run_time)
+                
+                os.remove(temp_filename)
+                #If running for >10 seconds, assume this is a good enough measure, and don't take any more averages to save time
+                if run_time > 10:
+                    break
+            #Calculate the mean
+            time_per_step = sum(run_times)/len(run_times)
+            
+            #If this was a scan task, not a repeat, then we'll have actually run two steps, not one. Adjust the time accordingly
+            if task_type == 1:
+                time_per_step = time_per_step/2
+            
+            #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+            #time_per_job = no_of_steps * time_per_step => no_of_steps = time_per_job/time_per_step
+            
+            time_per_job = settings.IDEAL_JOB_TIME * 60
+            
+            #Calculate the number of steps for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+            no_of_steps_per_job = min(int(round(float(time_per_job) / time_per_step)), no_of_steps)
+        
+        else:
+            no_of_steps_per_job = 1
 
         #Because of a limitation of Copasi, each parameter must have at least one interval, or two steps per job - corresponding to the max and min parameters
         #Force this limitation:
@@ -1229,7 +1238,7 @@ queue\n""")
         
         
         
-    def prepare_or_jobs(self, repeats):
+    def prepare_or_jobs(self, repeats, skip_load_balancing=False):
         """Prepare jobs for the optimization repeat task"""
         
         #First, clear all tasks
@@ -1261,29 +1270,33 @@ queue\n""")
         optReport.set('reference', report_key)
         optReport.set('append', '1')
         optReport.set('target', 'copasi_temp_output.txt')
-        import tempfile
-        #Write a temp XML file
+        
+        if not skip_load_balancing: # We only perform this step if required
+            import tempfile
+            #Write a temp XML file
 
-        temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
-        tempdir, rel_filename = os.path.split(temp_filename)
-        
-        self.model.write(temp_filename)
-        
-        #Note the start time
-        start_time = time.time()
-        self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
-        finish_time = time.time()
-        time_per_step = finish_time - start_time
-        os.remove(temp_filename)
-        
-        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
-        #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
-        
-        time_per_job = settings.IDEAL_JOB_TIME * 60
-        
-        #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
-        repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
-        
+            temp_file, temp_filename = tempfile.mkstemp(prefix='condor_copasi_', suffix='.cps')
+            tempdir, rel_filename = os.path.split(temp_filename)
+            
+            self.model.write(temp_filename)
+            
+            #Note the start time
+            start_time = time.time()
+            self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+            finish_time = time.time()
+            time_per_step = finish_time - start_time
+            os.remove(temp_filename)
+            
+            #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+            #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+            
+            time_per_job = settings.IDEAL_JOB_TIME * 60
+            
+            #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+            repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
+        else:
+            repeats_per_job = 1
+            
         no_of_jobs = int(math.ceil(float(repeats) / repeats_per_job))
     
     
@@ -1504,7 +1517,7 @@ queue\n""")
         return output
         
         
-    def prepare_pr_jobs(self, repeats):
+    def prepare_pr_jobs(self, repeats, skip_load_balancing=False):
         """Prepare jobs for the parameter estimation repeat task"""
         
         
@@ -1534,39 +1547,42 @@ queue\n""")
         fitReport.set('append', '1')
         fitReport.set('target', 'copasi_temp_output.txt')        
 
+        if not skip_load_balancing:
+            import tempfile
+            tempdir = tempfile.mkdtemp()
+            
+            temp_filename = os.path.join(tempdir, 'auto_copasi_temp.cps')
+            
+            #Copy the data file(s) over to the temp dir
+            import shutil
+            for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'),'r'):
+                data_file = data_file_line.rstrip('\n')
+                shutil.copy(os.path.join(self.path, data_file), os.path.join(tempdir, data_file))
+            
+            #Write a temp XML file
+            self.model.write(temp_filename)
+            
+            #Note the start time
+            start_time = time.time()
+            self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+            finish_time = time.time()
+            time_per_step = finish_time - start_time
+            
+            #Remove the temp directory tree
+            shutil.rmtree(tempdir)
 
-        import tempfile
-        tempdir = tempfile.mkdtemp()
-        
-        temp_filename = os.path.join(tempdir, 'auto_copasi_temp.cps')
-        
-        #Copy the data file(s) over to the temp dir
-        import shutil
-        for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'),'r'):
-            data_file = data_file_line.rstrip('\n')
-            shutil.copy(os.path.join(self.path, data_file), os.path.join(tempdir, data_file))
-        
-        #Write a temp XML file
-        self.model.write(temp_filename)
-        
-        #Note the start time
-        start_time = time.time()
-        self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
-        finish_time = time.time()
-        time_per_step = finish_time - start_time
-        
-        #Remove the temp directory tree
-        shutil.rmtree(tempdir)
+            
+            #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+            #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+            
+            time_per_job = settings.IDEAL_JOB_TIME * 60
+            
+            #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+            repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
 
-        
-        #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
-        #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
-        
-        time_per_job = settings.IDEAL_JOB_TIME * 60
-        
-        #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
-        repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
-        
+        else:
+            repeats_per_job = 1
+            
         no_of_jobs = int(math.ceil(float(repeats) / repeats_per_job))
         
         
