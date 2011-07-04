@@ -93,10 +93,13 @@ class CopasiModel:
         else:
             return True
         
-    def __copasiExecute(self, filename, tempdir, timeout=-1):
+    def __copasiExecute(self, filename, tempdir, timeout=-1, save=False):
         """Private function to run Copasi locally in a temporary folder."""
         import process
-        returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, filename], cwd=tempdir, timeout=timeout)
+        if not save:
+            returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, filename], cwd=tempdir, timeout=timeout)
+        else:
+            returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, '--save', filename, filename], cwd=tempdir, timeout=timeout)
         return returncode, stdout, stderr
         
    
@@ -1825,18 +1828,115 @@ queue\n""")
         
         headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
         values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
-#        print values
         
         output = []
         
         for i in range(len(headers)):
             output.append((headers[i], values[i]))
 
-
         return output
         
+    def create_pr_best_value_model(self, filename, custom_report=False):
+        """Create a .CPS model containing the best parameter values found by the PR task, and save it to filename"""
+        #We do this in an indirect way - set up the parameter estimation task again, set to executable,
+        # set the start values as the best values found by the task, set to current solution statistics,
+        # set to update model, and run.
+        
+        #Step 1 - set up the parameter estimation task
+        
+        #Clear all tasks
+        self.__clear_tasks()
+        
+        #get the parameter estimation task
+
+        fitTask = self.__getTask('parameterFitting')
+        
+        fitTask.attrib['scheduled'] = 'true'
+        fitTask.attrib['updateModel'] = 'true'
+        
+        #Even though we're not interested in the output at the moment, we have to set a report for the parameter fitting task, or Copasi will complain!
+        #Only do this if custom_report is false
+        if not custom_report:
+            #Create a new report for the or task
+            report_key = 'condor_copasi_parameter_fitting_repeat_report'
+            self.__create_report('PR', report_key, 'auto_pr_report')
+            
+        #And set the new report for the or task
+        fitReport = fitTask.find(xmlns + 'Report')
+    
+        if custom_report:
+            custom_report_key = fitReport.attrib['reference']
+    
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if fitReport == None:
+            fitReport = etree.Element(xmlns + 'Report')
+            fitTask.insert(0,fitReport)
+        
+        if not custom_report:
+            fitReport.set('reference', report_key)
+    
+        fitReport.set('append', '1')
+        fitReport.set('target', 'copasi_temp_output.txt')   
+        
+        ########
+        #Step 2 - go through the parameter fitting task, and update the parameter start values
+        
+        fitProblem = fitTask.find(xmlns + 'Problem')
+        
+        itemList = None
+        for group in fitProblem.iterfind(xmlns + 'ParameterGroup'):
+            if group.attrib['name'] == 'OptimizationItemList':
+                itemList = group
+                break
+        assert itemList != None
+
+        #get the best parameter values from results.txt. We'll assume they're in the same order, so we don't need to check the names
+        best_parameter_values = self.get_pr_best_value()
+        
+        #Index 0 = best value, 1 = CPU time, 2 = Function Evals, 3...n+3 = parameter values
+        #Therefore, start at 3
+        parameter_index = 3
+
+
+        #Get each parameter
+        for parameterGroup in itemList.iterfind(xmlns + 'ParameterGroup'):
+            if parameterGroup.attrib['name'] != 'FitItem':
+                continue
+            
+            startValue = None
+            for parameter in parameterGroup.iterfind(xmlns + 'Parameter'):
+                if parameter.attrib['name'] == 'StartValue':
+                    startValue = parameter
+                    break
+            assert startValue != None
+            print "start value: "
+            print startValue
+            #Set the start value:
+            startValue.attrib['value'] = best_parameter_values[parameter_index][1]
+            
+            parameter_index += 1
+        
+        ########
+        #Step 3 - get the method, and set to current solution statistics
+        
+        method = fitTask.find(xmlns + 'Method')
+        method.clear()
+        method.attrib['name'] = 'Current Solution Statistics'
+        method.attrib['type'] = 'CurrentSolutionStatistics'
+        
+        #Save to filename
+        
+        filename = os.path.join(self.path, filename)
+        self.model.write(filename)
         
         
+        ########
+        #Step 4 - run CopasiSE locally on this new file to update to the new parameter values
+        
+        self.__copasiExecute(filename, self.path, save=True)
+        
+        return
         
     def prepare_od_jobs(self, algorithms):
         """Prepare the jobs for the optimization with different algorithms task

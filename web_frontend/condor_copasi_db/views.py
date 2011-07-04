@@ -865,6 +865,28 @@ def jobDownload(request, job_name):
     return response
     
 @login_required
+def prModelDownload(request, job_name):
+    """Return the model containing the best result values for the PR task"""
+    try:
+        job = models.Job.objects.get(user=request.user, name=job_name, submitted=True)
+    except:
+        return web_frontend_views.handle_error(request, 'Error Finding Job',['The requested job could not be found'])
+    try:
+        model = CopasiModel(job.get_filename())
+    except:
+        return web_frontend_views.handle_error(request, 'Error Loading Model',[])
+    filename = os.path.join(model.path, 'best_values.cps')
+    if not os.path.isfile(filename):
+        return web_frontend_views.handle_error(request, 'Cannot Return Output',['There was an internal error processing the model file'])
+    result_file = open(filename, 'r')
+    response = HttpResponse(result_file, content_type='text/tab-separated-values')
+    response['Content-Disposition'] = 'attachment; filename=' + job.name + '_best_values.cps'
+    response['Content-Length'] = os.path.getsize(filename)
+    
+    return response
+    
+    
+@login_required
 def ss_plot(request, job_name):
     """Return the plot image for the results from a stochastic simulation"""
     import numpy as np

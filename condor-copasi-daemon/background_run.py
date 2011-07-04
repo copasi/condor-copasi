@@ -354,6 +354,10 @@ def run():
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
                 model.process_pr_results(no_of_jobs, custom_report=job.custom_report)
+                #Save a copy of the model with the best parameter values
+                
+                model.create_pr_best_value_model('best_values.cps', custom_report=job.custom_report)
+                
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
@@ -379,9 +383,9 @@ def run():
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
-        except Exception, e:
+        except:
             logging.warning('Error processing results for job ' + str(job.id) + ', User: ' + str(job.user))
-            logging.warning('Exception: ' + str(e))
+            logging.exception('Exception:')
             job.status='E'
             job.finish_time=datetime.datetime.today()
             job.last_update=datetime.datetime.today()
