@@ -140,11 +140,14 @@ function selectall(select){
     <ul class="job_details">
         <li><b>Raw Mode:</b></li>
         <ul>
-        <li>Details to go here</li>
-        <li>Blah</li>
+        <li>You must prepare the model file so that at least one task is marked as executable with a report output selected</li>
+        <li>Report output filenames will be appended with the zero-indexed repeat number.
+        <li>One repeat of the executable task(s) will run for each parallel job</li>
+        <li>Output files are not processed by Condor-COPASI</li>
+        <li>Customised arguments passed to the CopasiSE binary can also be specified</li>
         </ul>
     </ul>
-    Report not automatically generated - do this yourself.
+    Task reports will not be automatically generated - you must ensure that any executable tasks have a report type and output filename specified.
     {% endif %}
 </p>
 
