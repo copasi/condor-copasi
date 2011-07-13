@@ -23,7 +23,10 @@
 {% if job.job_type == 'SO' or job.job_type == 'SS' or job.job_type == 'OR' or job.job_type == 'PR' or job.job_type == 'OD' %}
     <li><b><a href="{% url job_output job.name %}">View</a></b> the results</li>
 {% endif %}
+
+{% if job.job_type != 'RW' %}
     <li><b><a href="{% url job_save job.name %}">Download</a></b> the results</li>
+{% endif %}
 {% if job.job_type == 'PR' %}
     <li><b><a href="{% url pr_best_results_download job.name %}">Download</a></b> a copy of the model with the best set of parameter values</li>
 {% endif %}

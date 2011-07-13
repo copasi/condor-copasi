@@ -11,6 +11,7 @@ class Job(models.Model):
         ('OR', 'Optimization Repeat'),
         ('PR', 'Parameter Estimation Repeat'),
         ('OD', 'Optimization Repeat with Different Algorithms'),
+        ('RW', 'Raw mode'),
     )
     #The type of job, e.g. sensitivity optimization
     job_type = models.CharField(max_length=2, choices=JOB_TYPE_CHOICES)
@@ -57,6 +58,11 @@ class Job(models.Model):
     #Update the table condor_copasi_db_job as follows in psql:
     #ALTER TABLE condor_copasi_db_job ADD COLUMN custom_report boolean;
     custom_report = models.NullBooleanField(null=True)
+    
+    #String containing custom arguments for the raw mode task
+    raw_mode_args = models.CharField(max_length=128, null=True, blank=True)
+    
+    
     class Meta:
         unique_together = ('user', 'name', 'submitted')
         ordering = ['-last_update']

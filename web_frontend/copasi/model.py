@@ -3,11 +3,21 @@ from web_frontend import settings
 from lxml import etree
 from string import Template
 xmlns = '{http://www.copasi.org/static/schema}'
-raw_condor_job_string = """#Condor job
-executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
-universe       = vanilla 
+
+condor_string_header = """#Condor job
+universe       = vanilla
+"""
+
+condor_string_args = """executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
 arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
-transfer_input_files = ${copasiFile}${otherFiles}
+"""
+
+#For raw mode
+condor_string_no_args = """executable = ${copasiPath}/CopasiSE.${OpSys}.${Arch}
+arguments = $args
+"""
+
+condor_string_body = """transfer_input_files = ${copasiFile}${otherFiles}
 log =  ${copasiFile}.log  
 error = ${copasiFile}.err
 output = ${copasiFile}.out
@@ -16,6 +26,10 @@ Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" &
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 queue\n"""
+
+raw_condor_job_string = condor_string_header + condor_string_args + condor_string_body
+
+raw_mode_string = condor_string_header + condor_string_no_args + condor_string_body
 
 
 class CopasiModel:
@@ -2491,3 +2505,94 @@ queue\n""")
         for line in open(os.path.join(self.path, 'results.txt')):
             output.append(line.rstrip('\n').rstrip('\t').split('\t'))
         return output
+        
+        
+    def prepare_rw_jobs(self, repeats):
+        """Prepare the jobs for the new raw mode.
+         
+        We assume that the model file is already set up for raw mode, i.e. at least one task marked as executable, reports set etc.
+        Therefore, all we need to do is, for each repeat, append the report name with an appropriate suffix so the names are unique"""
+        
+         
+        #The tasks we need to go through to append the report output
+        taskList = [
+            'steadyState',
+            'timeCourse',
+            'scan',
+            'metabolicControlAnalysis',
+            'optimization',
+            'parameterFitting',
+            'fluxMode',
+            'lyapunovExponents',
+            'timeScaleSeparationAnalysis',
+            'sensitivities',
+            'moieties'
+            ]
+        
+        
+        task_report_targets = {} #Store the report output targets 
+        #Create a new COPASI file for each repeat
+        for i in range(repeats):
+            #For each task, if the report output is set, append it with '_i'
+            for taskName in taskList:
+                try:
+                    task = self.__getTask(taskName)
+                    report = task.find(xmlns + 'Report')
+                    if i==0:
+                        task_report_targets[taskName] = report.attrib['target']
+                    report.attrib['target'] = task_report_targets[taskName] + '_' + str(i)
+                except:
+                    pass #It's possible not every task has a report set. If this is the case, ignore it!
+                    
+                    
+            target = os.path.join(self.path, 'auto_copasi_%s.cps'%i)
+                    
+            self.model.write(target)
+         
+        #Return the number of jobs that will run, which in this case is simply the number of repeats 
+        return repeats
+    
+    def prepare_rw_condor_jobs(self, repeats, raw_mode_args):
+        """Prepare the condor jobs for the raw mode task"""
+        
+        #Prepare a customized condor job string
+        #Somewhat confusingly, the original string was called raw_condor_string
+        #We'll call this one raw_mode_string_with_args
+        
+        #We want to substitute '$filename' to ${copasiFile}
+        args_string = Template(raw_mode_args).substitute(filename = '${copasiFile}')
+
+        raw_mode_string_with_args = Template(raw_mode_string).safe_substitute(args=args_string)
+        
+        
+        #Build up a string containing a comma-seperated list of data files
+        files_string = ','
+        for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'), 'r'):
+            data_file = data_file_line.rstrip('\n')
+            files_string += data_file + ','
+        
+
+        files_string = files_string.rstrip(',')
+
+        ############
+        #Build the appropriate .job files for the raw task, write them to disk, and make a note of their locations
+        condor_jobs = []
+
+        for i in range(repeats):
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
+            condor_job_string = Template(raw_mode_string_with_args).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string, OpSys='$$(OpSys)', Arch='$$(Arch)')
+            condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+
+        return condor_jobs
+    

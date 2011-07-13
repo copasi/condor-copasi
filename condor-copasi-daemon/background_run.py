@@ -102,6 +102,9 @@ def run():
             elif job.job_type == 'OD':
                 #No need to prepare the job. This was done as the job was submitted
                 condor_jobs = model.prepare_od_condor_jobs()           
+            elif job.job_type == 'RW':
+                no_of_jobs = model.prepare_rw_jobs(job.runs)
+                condor_jobs = model.prepare_rw_condor_jobs(no_of_jobs, job.raw_mode_args)
             else:
                 continue
                
@@ -314,7 +317,11 @@ def run():
 
                 job.last_update=datetime.datetime.today()
                 job.save()
-                
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
+
             elif job.job_type == 'PS':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -332,6 +339,8 @@ def run():
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
+                    
+                    
             elif job.job_type == 'OR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -350,6 +359,7 @@ def run():
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
+                    
             elif job.job_type == 'PR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -367,6 +377,11 @@ def run():
                 except:
                     logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
                 job.save()
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
+                
             elif job.job_type == 'OD':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 output_files = [cj.job_output for cj in condor_jobs]
@@ -374,6 +389,26 @@ def run():
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
+                try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
+                    
+            elif job.job_type == 'RW':
+                condor_jobs = models.CondorJob.objects.filter(parent=job)
+                no_of_jobs = len(condor_jobs)
+
+                #At the moment, we don't process anything. Just save the jobs as complete
+                
+                job.status = 'C'
+                job.last_update = datetime.datetime.today()
+                job.finish_time = datetime.datetime.today()
+
                 try:
                     zip_up_dir(job)
                 except:

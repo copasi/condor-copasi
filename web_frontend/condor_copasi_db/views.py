@@ -13,6 +13,8 @@ from web_frontend.condor_copasi_db import models
 from web_frontend import views as web_frontend_views
 from web_frontend.copasi.model import CopasiModel
 from django.core.urlresolvers import reverse
+from django.core.files.uploadedfile import TemporaryUploadedFile
+
 
 #Generic function for saving a django UploadedFile to a destination
 def handle_uploaded_file(f,destination):
@@ -52,6 +54,13 @@ class UploadModelForm(forms.Form):
         except AssertionError:
             raise forms.ValidationError('A job with this name already exists.')
 
+class SOUploadModelForm(UploadModelForm):
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
+        super(UploadModelForm, self).__init__(*args, **kwargs)
+        #This removes the skip load balancing field, which isn't required for this task
+        self.fields.pop('skip_load_balancing')
+
 class StochasticUploadModelForm(UploadModelForm):
     runs = forms.IntegerField(label='Repeats', help_text='The number of repeats to perform')        
     
@@ -67,6 +76,18 @@ class StochasticUploadModelForm(UploadModelForm):
 class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
     parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
     custom_report = forms.BooleanField(label='Use a custom report', help_text='Select this to use a custom report instead of the automatically generated one. If you select this, Condor-COPASI may not be able to process the output data, and the job will fail. However, you will still be able download the unprocessed results for manual processing. For output processing to work, you must create a report with custom fields added before the fields that would otherwise be automatically generated (Best Parameters, Best Value, CPU Time and Function Evaluations).', required=False)
+    
+class RawUploadModelForm(StochasticUploadModelForm):
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.get('request', None)
+        super(RawUploadModelForm, self).__init__(*args, **kwargs)
+        #This removes the skip load balancing field, which isn't required for this task
+        self.fields.pop('skip_load_balancing')
+    
+    #Allow us to include some extra files for the run
+    parameter_estimation_data = forms.FileField(required=False, label='Optional data files', help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
+    
+    raw_mode_args = forms.RegexField(max_length=128, regex=re.compile(r'.*\$filename.*$'), label='Optional arguments', help_text='Optional arguments to add when running COPASI. Must contain <b>$filename</b> as an argument', widget=forms.TextInput(attrs={'size':'40'}), required=True, initial='--nologo --home . --save $filename $filename') #TODO: update this regex so that it won't match certain characters, e.g. ';','|', '&' etc (though perhaps this isn't necessary)
 
 #Forms for the optimization repeat w/different algorithms task
 class CurrentSolutionStatisticsForm(forms.Form):
@@ -251,7 +272,7 @@ def newTask(request, type):
     
     if type == 'SO':
         pageTitle = 'Sensitivity Optimization / Global Sensitivity Analysis' 
-        Form = UploadModelForm
+        Form = SOUploadModelForm
     elif type == 'SS':
         pageTitle = 'Stochastic Simulation'
         Form = StochasticUploadModelForm
@@ -265,10 +286,14 @@ def newTask(request, type):
         pageTitle = 'Parameter Estimation Repeat'
         #Will need new form
         Form = ParameterEstimationUploadModelForm
+        
+    elif type == 'RW':
+        pageTitle = 'Raw Mode'
+        Form = RawUploadModelForm
     elif type == 'OD':
         pageTitle = 'Optimization Repeat with Different Algorithms'
         #Will need mega new form
-        Form = UploadModelForm
+        Form = SOUploadModelForm
         
         #Load the forms for the various different optimization algorithms
         algorithms = []
@@ -362,7 +387,7 @@ def newTask(request, type):
         return web_frontend_views.handle_error(request, 'Unknown job type')    
     if request.method == 'POST':
         form = Form(request.POST, request.FILES, request=request)
-        
+
         if type == 'OD':
             #Load instances of all forms
             for algorithm in algorithms:
@@ -394,16 +419,24 @@ def newTask(request, type):
                     file_error = m.is_valid(type)
                 else:
                     #Otherwise add a new job as unconfirmed
-                    if type == 'SS' or type == 'OR' or type=='PR':
+                    if type == 'SS' or type == 'OR' or type=='PR' or 'RW':
                         runs=int(form.cleaned_data['runs'])
                     elif type == 'OD':
-                        runs = algorithms_selected # Use runs in this instance as a cound of the number of algorithms we're running
+                        runs = algorithms_selected # Use runs in this instance as a count of the number of algorithms we're running
                     else:
                         runs = None
-                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=form.cleaned_data['skip_load_balancing'])
+                        
+                    try:
+                        skip_load_balancing = form.cleaned_data['skip_load_balancing']
+                    except:
+                        skip_load_balancing = None
+                    
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=form.cleaned_data['job_name'], submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=skip_load_balancing)
                     
                     if type=='PR':
                         job.custom_report = form.cleaned_data['custom_report']
+                    if type=='RW':
+                        job.raw_mode_args = form.cleaned_data['raw_mode_args']
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
                     user_dir=os.path.join(settings.USER_FILES_DIR, str(request.user.username))
@@ -419,7 +452,8 @@ def newTask(request, type):
                     destination=os.path.join(job_dir, model_file.name)
                     handle_uploaded_file(model_file, destination)
                     #If this is a parameter estimation job, handle the parameter estimation data
-                    if type == 'PR':
+                    #Or, also do this if this is a raw job, and a data file has been uploaded
+                    if type == 'PR' or (type=='RW' and isinstance(form.cleaned_data['parameter_estimation_data'], TemporaryUploadedFile)):
                         data_file = request.FILES['parameter_estimation_data']
                         filename = data_file.name
                         data_destination = os.path.join(job_dir, filename)
@@ -443,7 +477,15 @@ def newTask(request, type):
                             data_files_list=open(os.path.join(job_dir, 'data_files_list.txt'), 'w')
                             data_files_list.write(filename + '\n')
                             data_files_list.close()
+                        
+                    #Otherwise, if this is a raw job, create an empty file called data_files_list.txt
                     
+                    elif type=='RW' and not isinstance(form.cleaned_data['parameter_estimation_data'], TemporaryUploadedFile):
+                        data_files_list=open(os.path.join(job_dir, 'data_files_list.txt'), 'w')
+                        data_files_list.write('') #Not sure if this line is needed, but can't hurt
+                        data_files_list.close()
+                        
+                        
                     elif type == 'OD':
                         #If this is the optimization with different algorithms task, then prepare the relevant files now, while we have the algorithm information available
                         model = CopasiModel(destination)
@@ -574,6 +616,17 @@ def taskConfirm(request, job_id):
             ('Number of Algorithms Selected', job.runs),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
+        
+    elif job.job_type == 'RW':
+        pageTitle = 'Confirm Optimization Repeat with Different Algorithms Task'
+        job_details = (
+            ('Job Name', job.name),
+            ('File Name', job.model_name),
+            ('Model Name', model.get_name()),
+            ('Arguments', job.raw_mode_args),
+        )
+        return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
+        
 @login_required
 def myAccount(request):
     pageTitle = 'My Account'

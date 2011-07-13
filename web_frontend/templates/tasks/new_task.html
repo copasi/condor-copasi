@@ -56,6 +56,9 @@ function selectall(select){
 {% if type == "OD" %}
 <a href="{% url new_OD %}">Optimization Repeat with Different Algorithms</a>
 {% endif %}
+{% if type == "OD" %}
+<a href="{% url new_RW %}">Raw Mode</a>
+{% endif %}
 &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
 
 {% block body %}
@@ -131,6 +134,17 @@ function selectall(select){
         </ul>
     </ul>
     Condor-COPASI will automatically generate an appropriate report; no report needs to be set for the Optimization task.
+    {% endif %}
+    
+    {% if type == 'RW' %}
+    <ul class="job_details">
+        <li><b>Raw Mode:</b></li>
+        <ul>
+        <li>Details to go here</li>
+        <li>Blah</li>
+        </ul>
+    </ul>
+    Report not automatically generated - do this yourself.
     {% endif %}
 </p>
 
