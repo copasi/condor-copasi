@@ -11,7 +11,7 @@ class Log:
         
         #Job execution string will be of the format:
         #001 (20949.000.000) 02/07 11:27:10 Job executing on host: <130.88.110.118:60608>
-        execution_string = r'\d+\s\S+\s(?P<month>\d\d)\/(?P<day>\d\d)\s(?P<hour>\d+)\:(?P<minute>\d+)\:(?P<second>\d+)\sJob executing on host\:\s\<(?P<host>\d+\.\d+\.\d+\.\d+)\:(?P<port>\d+)\>.*'
+        execution_string = r'\d+\s\S+\s(?P<month>\d\d)\/(?P<day>\d\d)\s(?P<hour>\d+)\:(?P<minute>\d+)\:(?P<second>\d+)\sJob executing on host\:\s\<(?P<host>.+)\>.*'
         execution_re = re.compile(execution_string)
         
         #Job termination string:
@@ -21,7 +21,7 @@ class Log:
         
         #Termination status:
         #	(1) Normal termination (return value 0) #TODO:this only works for normal termination, so status will always be 0
-        termination_status_string = r'\s+\(\d+\)\sNormal termination\s\(return value (?P<return_value>\d+)\).*'
+        termination_status_string = r'\s+\(\d+\)\s(Normal|Abnormal) termination\s\((return value|signal) (?P<return_value>\d+)\).*'
         termination_status_re = re.compile(termination_status_string)
         
         #Remote usage time
@@ -67,7 +67,7 @@ class Log:
                 minute = int(g('minute'))
                 second = int(g('second'))
                 host = g('host')
-                port = g('port')
+#                port = g('port')
                 
                 #Create datetime object for execution start time
                 #Since log file doesn't store the date, we'll have to guess it
