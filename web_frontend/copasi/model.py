@@ -50,7 +50,7 @@ class CopasiModel:
     def is_valid(self, job_type):
         """Check if the model has been correctly set up for a particular condor-copasi task"""
         #Check the version is correct
-        if not (self.__getVersion() == 33 or self.__getVersion() == 34):
+        if not (self.__getVersion() == 33 or self.__getVersion() == 34 or self.__getVersion() == 35):
             return 'The model must be saved using a supported version of Copasi. The model you submitted appears to have been saved using version ' + str(self.__getVersion())
         if job_type == 'SO':
             #Check that a single object has been set for the sensitivities task:
