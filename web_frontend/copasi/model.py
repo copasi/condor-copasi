@@ -1468,7 +1468,7 @@ queue\n""")
         for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
             output_file.write(line)
             if line == '\n':
-                last_value = output_re.match(last_line).groupdict()['best_value']
+                last_value = float(output_re.match(last_line).groupdict()['best_value'])
                 if best_value != None and maximize:
                     if last_value > best_value:
                         best_value = last_value
@@ -1490,7 +1490,7 @@ queue\n""")
                 if not firstLine:
                     output_file.write(line)
                     if line == '\n':
-                        last_value = output_re.match(last_line).groupdict()['best_value']
+                        last_value = float(output_re.match(last_line).groupdict()['best_value'])
                         if maximize:
                             if last_value > best_value:
                                 best_value = last_value
@@ -1771,7 +1771,7 @@ queue\n""")
             output_file.write(line)
             try:
                 if line == '\n':
-                    last_value = output_re.match(last_line).groupdict()['best_value']
+                    last_value = float(output_re.match(last_line).groupdict()['best_value'])
                     if best_value != None:
                         if last_value < best_value:
                             best_value = last_value
@@ -1795,7 +1795,7 @@ queue\n""")
                     output_file.write(line)
                     try:
                         if line == '\n':
-                            last_value = output_re.match(last_line).groupdict()['best_value']
+                            last_value = float(output_re.match(last_line).groupdict()['best_value'])
                             if last_value < best_value:
                                 best_value = last_value
                                 best_line = last_line
