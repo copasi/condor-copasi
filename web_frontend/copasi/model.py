@@ -480,7 +480,7 @@ class CopasiModel:
         <Object cn="CN=Root,Vector=TaskList[Optimization],Problem=Optimization,Reference=Function Evaluations"/>
       </Table>
     </Report>"""
-            ).substitute(report_key=report_key, name=report_name)
+            ).substitute(report_key=report_key, report_name=report_name)
             report = etree.XML(report_string)
                         
             listOfReports.append(report)
@@ -1454,8 +1454,7 @@ queue\n""")
         
         output_file = open(os.path.join(self.path, 'raw_results.txt'), 'w')
         
-        #Keep track of the last read line before a newline; this will be the best value from an optimization run
-        last_line = ''
+
         #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0	
         #Contains parameter values, the best optimization value, the cpu time, and some other values.
         output_string = r'\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\.*'
@@ -1467,21 +1466,22 @@ queue\n""")
         #Copy the contents of the first file to results.txt
         for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
             output_file.write(line)
-            if line == '\n':
-                last_value = float(output_re.match(last_line).groupdict()['best_value'])
-                if best_value != None and maximize:
-                    if last_value > best_value:
-                        best_value = last_value
-                        best_line = last_line
-                elif best_value != None and not maximize:
-                    if last_value < best_value:
-                        best_value = last_value
-                        best_line = last_line
-                elif best_value == None:
-                    best_value = last_value
-                    best_line = last_line
+            if line != '\n':
+                if output_re.match(line):
+                    value = float(output_re.match(line).groupdict()['best_value'])
+                    if best_value != None and maximize:
+                        if value > best_value:
+                            best_value = value
+                            best_line = line
+                    elif best_value != None and not maximize:
+                        if value < best_value:
+                            best_value = value
+                            best_line = line
+                    elif best_value == None:
+                        best_value = value
+                        best_line = line
             else:
-                last_line = line
+                pass
                 
         #And for all other files, copy everything but the last line
         for i in range(jobs)[1:]:
@@ -1489,18 +1489,19 @@ queue\n""")
             for line in open(os.path.join(self.path, str(i) + '_out.txt'), 'r'):
                 if not firstLine:
                     output_file.write(line)
-                    if line == '\n':
-                        last_value = float(output_re.match(last_line).groupdict()['best_value'])
-                        if maximize:
-                            if last_value > best_value:
-                                best_value = last_value
-                                best_line = last_line
-                        elif not maximize:
-                            if last_value < best_value:
-                                best_value = last_value
-                                best_line = last_line
+                    if line != '\n':
+                        if output_re.match(line):
+                            value = float(output_re.match(line).groupdict()['best_value'])
+                            if maximize:
+                                if value > best_value:
+                                    best_value = value
+                                    best_line = line
+                            elif not maximize:
+                                if value < best_value:
+                                    best_value = value
+                                    best_line = line
                     else:
-                        last_line = last_line
+                        pass
                 firstLine = False
                 
                 
@@ -1771,7 +1772,7 @@ queue\n""")
             output_file.write(line)
             try:
                 if line != '\n':
-                    if output_re.match(last_line):
+                    if output_re.match(line):
                         current_value = float(output_re.match(line).groupdict()['best_value'])
                         if best_value != None:
                             if current_value < best_value:
@@ -1796,8 +1797,8 @@ queue\n""")
                     output_file.write(line)
                     try:
                         if line != '\n':
-                            if output_re.match(last_line):
-                                current_value = float(output_re.match(last_line).groupdict()['best_value'])
+                            if output_re.match(line):
+                                current_value = float(output_re.match(line).groupdict()['best_value'])
                                 if current_value < best_value:
                                     best_value = current_value
                                     best_line = line
@@ -1823,7 +1824,7 @@ queue\n""")
             output_file.write(parameter[0])
             output_file.write('\t')
         output_file.write('\n')
-
+        
         best_line_dict = output_re.match(best_line).groupdict()
 
         output_file.write(best_line_dict['best_value'])
