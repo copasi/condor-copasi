@@ -1770,17 +1770,18 @@ queue\n""")
         for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
             output_file.write(line)
             try:
-                if line == '\n':
-                    last_value = float(output_re.match(last_line).groupdict()['best_value'])
-                    if best_value != None:
-                        if last_value < best_value:
-                            best_value = last_value
-                            best_line = last_line
-                    elif best_value == None:
-                        best_value = last_value
-                        best_line = last_line
+                if line != '\n':
+                    if output_re.match(last_line):
+                        current_value = float(output_re.match(line).groupdict()['best_value'])
+                        if best_value != None:
+                            if current_value < best_value:
+                                best_value = current_value
+                                best_line = line
+                        elif best_value == None:
+                            best_value = current_value
+                            best_line = line
                 else:
-                    last_line = line
+                    pass
             except:
                 if custom_report:
                     pass
@@ -1794,13 +1795,14 @@ queue\n""")
                 if not firstLine:
                     output_file.write(line)
                     try:
-                        if line == '\n':
-                            last_value = float(output_re.match(last_line).groupdict()['best_value'])
-                            if last_value < best_value:
-                                best_value = last_value
-                                best_line = last_line
+                        if line != '\n':
+                            if output_re.match(last_line):
+                                current_value = float(output_re.match(last_line).groupdict()['best_value'])
+                                if current_value < best_value:
+                                    best_value = current_value
+                                    best_line = line
                         else:
-                            last_line = last_line
+                            pass
                     except:
                         if custom_report:
                             pass
