@@ -419,7 +419,7 @@ def newTask(request, type):
                     file_error = m.is_valid(type)
                 else:
                     #Otherwise add a new job as unconfirmed
-                    if type == 'SS' or type == 'OR' or type=='PR' or 'RW':
+                    if type == 'SS' or type == 'OR' or type=='PR' or type=='RW':
                         runs=int(form.cleaned_data['runs'])
                     elif type == 'OD':
                         runs = algorithms_selected # Use runs in this instance as a count of the number of algorithms we're running
