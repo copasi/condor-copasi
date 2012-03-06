@@ -25,6 +25,7 @@ Requirements = ( (OpSys == "WINNT51" && Arch == "INTEL" ) || (OpSys == "LINUX" &
 #Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
+notification = Never
 queue\n"""
 
 raw_condor_job_string = condor_string_header + condor_string_args + condor_string_body
