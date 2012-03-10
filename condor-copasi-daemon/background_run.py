@@ -46,7 +46,7 @@ def condor_submit(condor_file, username=None, results=False):
 #    process_id = int(process_output.splitlines()[2].split()[5].strip('.'))
     #use a regular expression to parse the process output
     r=re.compile(r'[\s\S]*submitted to cluster (?P<id>\d+).*')
-    process_id = int(r.match(process_output).group(id))
+    process_id = int(r.match(process_output).group('id'))
     
     #TODO: Should we sleep here for a bit? 1s? 10s?
     
