@@ -368,8 +368,9 @@ def run():
                 no_of_jobs = len(condor_jobs)
                 model.process_pr_results(no_of_jobs, custom_report=job.custom_report)
                 #Save a copy of the model with the best parameter values
-                
-                model.create_pr_best_value_model('best_values.cps', custom_report=job.custom_report)
+                #Only do this if job.skip_model_generation != False
+                if not job.skip_model_generation:
+                    model.create_pr_best_value_model('best_values.cps', custom_report=job.custom_report)
                 
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()

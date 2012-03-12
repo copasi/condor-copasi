@@ -27,7 +27,7 @@
 {% if job.job_type != 'RW' %}
     <li><b><a href="{% url job_save job.name %}">Download</a></b> the results</li>
 {% endif %}
-{% if job.job_type == 'PR' %}
+{% if job.job_type == 'PR' and auto_model_download %}
     <li><b><a href="{% url pr_best_results_download job.name %}">Download</a></b> a copy of the model with the best set of parameter values</li>
 {% endif %}
     <li><b><a href="{% url job_download job.name %}">Download</a></b> the directory containing the output files as a <b><tt>.tar.bz2</tt></b> file.</li>

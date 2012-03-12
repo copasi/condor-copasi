@@ -54,6 +54,11 @@ class Job(models.Model):
     #ALTER TABLE condor_copasi_db_job ADD COLUMN skip_load_balancing boolean;
     skip_load_balancing = models.NullBooleanField(null=True)
 
+    #Added in version 0.3.2 - set option to skip the generation of model files after a parameter estimation or optimization repeat task
+    #ALTER TABLE condor_copasi_db_job ADD COLUMN skip_model_generation boolean;
+    skip_model_generation = models.NullBooleanField(null=True)
+
+
     #Added in version 0.2.2 - set option to flag that a custom report is to be used. At present this only applies to the PR task, since all other tasks can be recreated as a paramter scan
     #Update the table condor_copasi_db_job as follows in psql:
     #ALTER TABLE condor_copasi_db_job ADD COLUMN custom_report boolean;
