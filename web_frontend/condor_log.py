@@ -29,7 +29,20 @@ class Log:
         remote_usage_string = r'\s+Usr\s(?P<usr_days>\d+)\s(?P<usr_hours>\d+)\:(?P<usr_minutes>\d+)\:(?P<usr_seconds>\d+)\,\sSys\s(?P<sys_days>\d+)\s(?P<sys_hours>\d+)\:(?P<sys_minutes>\d+)\:(?P<sys_seconds>\d+)\s+\-\s+Total Remote Usage.*'
         remote_usage_re = re.compile(remote_usage_string)
         
-
+        #We'll use this string to search for the phrase 'Job terminated'. We'll then use this to decide whether or not the job has finished running yet. If not, then don't try and match anything else yet - there's no point
+        termination_confirmation_string = r'.*Job terminated.'
+        termination_confirmation_re = re.compile(termination_confirmation_string)
+        
+        self.has_terminated = False
+        #Search to see if the job has actually terminated. Only continue if it has...
+        for line in open(path, 'r'):
+            if termination_confirmation_re.match(line):
+                self.has_terminated = True
+                break
+        
+        if not self.has_terminated:
+            return
+                    
         try:
             for line in open(path, 'r'):
                 if execution_re.match(line):

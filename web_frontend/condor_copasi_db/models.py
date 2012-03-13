@@ -109,6 +109,8 @@ class CondorJob(models.Model):
         ('H', 'Held'),
         ('F', 'Finished'),
         ('D', 'Mark for deletion'),
+        ('U', 'Unknown'),
+        ('E', 'Error'),
     )
     queue_status = models.CharField(max_length=1, choices=QUEUE_CHOICES)
     #The id of the job in the queue. Only set once the job has been queued

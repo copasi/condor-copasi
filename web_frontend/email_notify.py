@@ -5,6 +5,11 @@ from string import Template
 from django.core.urlresolvers import reverse
 
 def send_email(job):
+
+    #Only do something if email is enabled in the settings file
+    if not settings.SEND_EMAILS:
+        return
+    
     sender = settings.EMAIL_FROM_ADDRESS
 
     receiver = job.user.email

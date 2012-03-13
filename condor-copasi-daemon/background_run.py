@@ -177,15 +177,39 @@ def run():
                     submitted_job.queue_status = status
                     submitted_job.save()
                     break
-            #else, the job has gone from the queue, so assume it has finished, and update the status
+            #If the job is not in the queue, we put it into an unknown state, until we can check it's log file fully to determine if it's finished running
             if not found:
-                submitted_job.queue_status = 'F'
+                submitted_job.queue_status = 'U'
                 submitted_job.save()            
     except Exception, e:
         logging.error('Error processing condor_q output. Ensure the condor scheduler service is running')
         logging.error('Exception: ' + str(e))
     ############
+    #Now, for each CondorJob with a status 'U', read the log file. If the log file says that the job terminated successfully, then mark the job as 'F'; if it terminated unsuccessfully, then mark it as a 'U'. If we can't determine that the job terminated yet, then leave it as 'U'
+    
+    unknown_jobs = models.CondorJob.objects.filter(queue_status='U')
+    for condor_job in unknown_jobs:
+        job = condor_job.parent
+        logging.debug('Checking unknown job ' + str(condor_job.queue_id))
+        try:
+            filename=os.path.join(job.get_path(), condor_job.log_file)
+            log = condor_log.Log(filename)
+            if log.has_terminated:
+                if log.termination_status == 0:
+                    condor_job.queue_status = 'F'
+                else:
+                    condor_job.queue_status = 'E'
+                condor_job.save()
+            #If not terminated, leave as 'U'; do nothing
+            else:
+                logging.debug('Condor job ' + str(condor_job.queue_id) + ' has not terminated yet. Leaving status as unknown.') #Write to the log. Jobs with unknown status could indicate problems with Condor. Could consider emailing administrator if this happens...
+        except Exception, e:
+            logging.error('Could not verify job successfully completed. Job ' + str(condor_job.id))
+            logging.error('Exception: ' + str(e))
+            condor_job.queue_status = 'E'
+            condor_job.save()
 
+    ###############
     #Go through each of the model.Jobs with status 'S' (submitted) or 'X'(processing data on condor), and look at each of its child CondorJobs. If all have finished, mark the Job as 'W' (finished, waiting for processing). If any CondorJobs have been held ('H'), mark the Job as Error ('E')
 
     submitted_jobs = models.Job.objects.filter(status='S') | models.Job.objects.filter(status='X')
@@ -200,6 +224,10 @@ def run():
                     still_running = True
                     break
                 elif condor_job.queue_status == 'H':
+                    logging.warning('Condor job id ' + str(condor_job.queue_id) + ' held')
+                    error = True
+                    break
+                elif condor_job.queue_status == 'E':
                     logging.warning('Condor job id ' + str(condor_job.queue_id) + ' held')
                     error = True
                     break
