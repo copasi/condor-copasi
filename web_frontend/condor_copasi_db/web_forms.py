@@ -9,10 +9,27 @@ import re
 class UploadModelForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
+        last_rank = kwargs.pop('last_rank', False)
+        
         super(UploadModelForm, self).__init__(*args, **kwargs)
+        
+        if last_rank:
+            self.fields['rank'].help_text = """<script type="text/javascript">
+            function loadtext() {
+                oFormObject = document.forms[0];
+                oFormElement = oFormObject.elements["id_rank"];
+                oFormElement.value = "%s";
+            }
+            </script> <a href="javascript:loadtext()">Use rank from last job</a>. """ % last_rank
+        else:
+            self.fields['rank'].help_text = ''
+        self.fields['rank'].help_text += 'If you are unsure how to use rank, then do not change from the default value'
         
     model_file = forms.FileField()
     job_name = forms.RegexField(max_length=64, regex=re.compile(r'^(a-z|A-Z|0-9)*[^%]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
+    
+    
+    rank = forms.CharField(max_length=5000, label='Rank', help_text='', initial='0', widget=forms.TextInput(attrs={'size':'40'}))
 
     def clean_job_name(self):
         job_name = self.cleaned_data['job_name']

@@ -67,6 +67,8 @@ class Job(models.Model):
     #String containing custom arguments for the raw mode task
     raw_mode_args = models.CharField(max_length=128, null=True, blank=True)
     
+    #String containing the optional rank parameter for the job
+    rank = models.CharField(max_length=5000, null=True, blank=True)
     
     class Meta:
         unique_together = ('user', 'name', 'submitted')

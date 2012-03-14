@@ -177,8 +177,19 @@ def newTask(request, type):
         })
     else:
         return web_frontend_views.handle_error(request, 'Unknown job type')    
+        
+    try:
+        #For the rank field, if we can, then get the most recently submitted job
+        last_job = models.Job.objects.filter(user=request.user).latest('id')
+        last_job_rank = last_job.rank
+        #assert last_job_rank != None
+        last_job_id = last_job.id
+    except:
+        last_job_rank = False
+        last_job_id = 'not found'
+        
     if request.method == 'POST':
-        form = Form(request.POST, request.FILES, request=request)
+        form = Form(request.POST, request.FILES, request=request, last_rank=last_job_rank)
 
         if type == 'OD':
             #Load instances of all forms
@@ -220,6 +231,7 @@ def newTask(request, type):
                         skip_model_generation = None
                         custom_report = None
                         raw_mode_args = None
+                        rank = form.cleaned_data['rank']
                         
                     elif type == 'SS':
                         name = form.cleaned_data['job_name']
@@ -228,6 +240,7 @@ def newTask(request, type):
                         skip_model_generation = None
                         custom_report = None
                         raw_mode_args = None
+                        rank = form.cleaned_data['rank']
                         
                     elif type == 'PS':
                         name = form.cleaned_data['job_name']
@@ -235,7 +248,8 @@ def newTask(request, type):
                         skip_load_balancing = form.cleaned_data['skip_load_balancing']
                         skip_model_generation = None
                         custom_report = None
-                        raw_mode_args = None    
+                        raw_mode_args = None
+                        rank = form.cleaned_data['rank']    
                                             
                     elif type == 'OR':
                         name = form.cleaned_data['job_name']
@@ -243,7 +257,8 @@ def newTask(request, type):
                         skip_load_balancing = form.cleaned_data['skip_load_balancing']
                         skip_model_generation = None
                         custom_report = None
-                        raw_mode_args = None   
+                        raw_mode_args = None
+                        rank = form.cleaned_data['rank']
                                             
                     elif type == 'PR':
                         name = form.cleaned_data['job_name']
@@ -252,6 +267,7 @@ def newTask(request, type):
                         skip_model_generation = form.cleaned_data['skip_model_generation']
                         custom_report = form.cleaned_data['custom_report']
                         raw_mode_args = None
+                        rank = form.cleaned_data['rank']
                                             
                     elif type == 'RW':
                         name = form.cleaned_data['job_name']
@@ -260,6 +276,7 @@ def newTask(request, type):
                         skip_model_generation = None
                         custom_report = None
                         raw_mode_args = form.cleaned_data['raw_mode_args']
+                        rank = form.cleaned_data['rank']
                         
                     elif type == 'OD':
                         name = form.cleaned_data['job_name']
@@ -268,10 +285,10 @@ def newTask(request, type):
                         skip_model_generation = None
                         custom_report = None
                         raw_mode_args = None                      
-                    
+                        rank = form.cleaned_data['rank']
 
                     #Create the job
-                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=name, submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=skip_load_balancing, custom_report=custom_report, raw_mode_args=raw_mode_args, skip_model_generation=skip_model_generation)
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=name, submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=skip_load_balancing, custom_report=custom_report, raw_mode_args=raw_mode_args, skip_model_generation=skip_model_generation, rank=rank)
 
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
@@ -333,7 +350,7 @@ def newTask(request, type):
                 file_error = 'The submitted file is not a valid COPASI xml file'
                     
     else:
-        form = Form()
+        form = Form(last_rank=last_job_rank)
         file_error = False
         
         if type == 'OD':
@@ -400,6 +417,7 @@ def taskConfirm(request, job_id):
             ('Model Name', model.get_name()),
             ('Optimization algorithm', model.get_optimization_method()),
             ('Sensitivities Object', model.get_sensitivities_object()),    
+            ('Job rank', job.rank),
         )
         parameters =  model.get_optimization_parameters(friendly=True)
         return render_to_response('tasks/sensitivity_optimization_confirm.html', locals(), RequestContext(request))
@@ -411,7 +429,8 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Time course algorithm', model.get_timecourse_method()),
-            ('Number of runs', job.runs)
+            ('Number of runs', job.runs),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     elif job.job_type == 'PS':
@@ -420,7 +439,8 @@ def taskConfirm(request, job_id):
             ('Job Name', job.name),
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
-            ('Total number of scans', model.get_ps_number())
+            ('Total number of scans', model.get_ps_number()),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
@@ -431,6 +451,7 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Number of runs', job.runs),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
@@ -441,6 +462,7 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Number of Repeats', job.runs),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
     elif job.job_type == 'OD':
@@ -450,6 +472,7 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Number of Algorithms Selected', job.runs),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
@@ -460,6 +483,7 @@ def taskConfirm(request, job_id):
             ('File Name', job.model_name),
             ('Model Name', model.get_name()),
             ('Arguments', job.raw_mode_args),
+            ('Job rank', job.rank),
         )
         return render_to_response('tasks/task_confirm.html', locals(), RequestContext(request))
         
@@ -554,6 +578,7 @@ def jobDetails(request, job_name):
     held_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='H'))
     total_condor_jobs = running_condor_jobs + idle_condor_jobs + held_condor_jobs + finished_condor_jobs
     
+    rank = job.rank
 
     job_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
     if job.finish_time != None:

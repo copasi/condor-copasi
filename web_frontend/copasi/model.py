@@ -1,35 +1,10 @@
 import subprocess, os, re, math, time
-from web_frontend import settings
+from web_frontend import settings, condor_spec
 from lxml import etree
 from string import Template
 xmlns = '{http://www.copasi.org/static/schema}'
 
-condor_string_header = """#Condor job
-universe       = vanilla
-"""
 
-condor_string_args = """executable = ${copasiPath}/CopasiSE.$$$$(OpSys).$$$$(Arch)
-arguments = --nologo --home . ${copasiFile} --save ${copasiFile}
-"""
-
-#For raw mode
-condor_string_no_args = """executable = ${copasiPath}/CopasiSE.${OpSys}.${Arch}
-arguments = $args
-"""
-
-condor_string_body = """transfer_input_files = ${copasiFile}${otherFiles}
-log =  ${copasiFile}.log  
-error = ${copasiFile}.err
-output = ${copasiFile}.out
-Requirements = ( (OpSys == "WINNT61" && Arch == "INTEL" ) || (OpSys == "WINNT61" && Arch == "X86_64" ) || (Opsys == "LINUX" && Arch == "X86_64" ) || (OpSys == "OSX" && Arch == "PPC" ) || (OpSys == "OSX" && Arch == "INTEL" ) || (OpSys == "LINUX" && Arch == "INTEL" ) ) && (Memory > 0 ) && (Machine != "e-cskc38c04.eps.manchester.ac.uk") && (machine != "localhost.localdomain")
-#Requirements = (OpSys == "LINUX" && Arch == "X86_64" )
-should_transfer_files = YES
-when_to_transfer_output = ON_EXIT
-queue\n"""
-
-raw_condor_job_string = condor_string_header + condor_string_args + condor_string_body
-
-raw_mode_string = condor_string_header + condor_string_no_args + condor_string_body
 
 
 class CopasiModel:
@@ -620,7 +595,7 @@ class CopasiModel:
             i = i + 1
         
         
-    def prepare_so_condor_jobs(self):
+    def prepare_so_condor_jobs(self, rank='0'):
         """Prepare the neccessary .job files to submit to condor for the sensitivity optimization task"""
         #We must change the ownership of each of the copasi files to the user running this script
         #
@@ -644,7 +619,7 @@ class CopasiModel:
         for i in range(len(self.get_optimization_parameters())):
             for max in ('min', 'max'):
                 copasi_file = Template('auto_copasi_${max}_$index.cps').substitute(index=i, max=max)
-                condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+                condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='', rank=rank)
                 condor_job_filename = os.path.join(self.path, Template('auto_condor_${max}_$index.job').substitute(index=i, max=max))
                 condor_file = open(condor_job_filename, 'w')
                 condor_file.write(condor_job_string)
@@ -880,7 +855,7 @@ class CopasiModel:
             
         return no_of_jobs
             
-    def prepare_ss_condor_jobs(self, jobs):
+    def prepare_ss_condor_jobs(self, jobs, rank='0'):
         """Prepare the neccessary .job files to submit to condor for the stochastic simulation task"""
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
@@ -888,7 +863,7 @@ class CopasiModel:
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='', rank=rank)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -904,7 +879,7 @@ class CopasiModel:
 
         return condor_jobs
         
-    def prepare_ss_process_job(self, jobs, runs):
+    def prepare_ss_process_job(self, jobs, runs, rank='0'):
         """Collate the results from the stochastic simulation task"""
         #First, read through the various output files, and concatenate into a single file raw_results.txt
         assert jobs >0
@@ -938,20 +913,9 @@ class CopasiModel:
         script = os.path.join(settings.MEDIA_ROOT, 'ss_results_process.py')
         raw_results = os.path.join(self.path, 'raw_results.txt')
 
-        job_template = Template("""#Condor job
-executable = ${script}
-universe       = vanilla 
-arguments = 
-transfer_input_files = ${raw_results}
-log =  results.log  
-error = results.err
-output = results.out
-Requirements = ( OpSys == "LINUX" || OpSys=="OSX") && ( Arch=="X86_64" || Arch=="INTEL" ) && (HAS_PYTHON26 == True) && (machine != "localhost.localdomain")
-should_transfer_files = YES
-when_to_transfer_output = ON_EXIT
-queue\n""")
+        job_template = Template(condor_spec.stochastic_processing_spec_string)
 
-        job_string = job_template.substitute(script=script, raw_results=raw_results)
+        job_string = job_template.substitute(script=script, raw_results=raw_results, rank=rank)
         job_file = open(os.path.join(self.path, 'results.job'), 'w')
         job_file.write(job_string)
         job_file.close()
@@ -1222,7 +1186,7 @@ queue\n""")
                 self.model.write(filename)
         return no_of_jobs
         
-    def prepare_ps_condor_jobs(self, jobs):
+    def prepare_ps_condor_jobs(self, jobs, rank='0'):
         """Prepare the condor jobs for the parallel scan task"""
                 ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
@@ -1230,7 +1194,7 @@ queue\n""")
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='', rank=rank)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -1413,7 +1377,7 @@ queue\n""")
             
         return no_of_jobs
         
-    def prepare_or_condor_jobs(self, jobs):
+    def prepare_or_condor_jobs(self, jobs, rank='0'):
         """Prepare the condor jobs for the parallel scan task"""
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
@@ -1421,7 +1385,7 @@ queue\n""")
                     
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='', rank=rank)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -1714,7 +1678,7 @@ queue\n""")
         return no_of_jobs
         
         
-    def prepare_pr_condor_jobs(self, jobs):
+    def prepare_pr_condor_jobs(self, jobs, rank='0'):
         """Prepare the condor jobs for the parallel scan task"""
         ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
@@ -1733,7 +1697,7 @@ queue\n""")
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
             #In addition to the copasi file, also transmit the data files. These are listed in files_string
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string)            
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string)            
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -2382,7 +2346,7 @@ queue\n""")
         output_files_list.close()
         return
         
-    def prepare_od_condor_jobs(self):
+    def prepare_od_condor_jobs(self, rank='0'):
         """Prepare the condor jobs for the optimization with different algorithms task"""
                 ############
         #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
@@ -2405,7 +2369,7 @@ queue\n""")
                     
         for i in range(len(output_files)):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='')
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles='', rank=rank)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
@@ -2562,7 +2526,7 @@ queue\n""")
         #Return the number of jobs that will run, which in this case is simply the number of repeats 
         return repeats
     
-    def prepare_rw_condor_jobs(self, repeats, raw_mode_args):
+    def prepare_rw_condor_jobs(self, repeats, raw_mode_args, rank='0'):
         """Prepare the condor jobs for the raw mode task"""
         
         #Prepare a customized condor job string
@@ -2572,7 +2536,7 @@ queue\n""")
         #We want to substitute '$filename' to ${copasiFile}
         args_string = Template(raw_mode_args).substitute(filename = '${copasiFile}')
 
-        raw_mode_string_with_args = Template(raw_mode_string).safe_substitute(args=args_string)
+        raw_mode_string_with_args = Template(condor_spec.raw_mode_string).safe_substitute(args=args_string)
         
         
         #Build up a string containing a comma-seperated list of data files

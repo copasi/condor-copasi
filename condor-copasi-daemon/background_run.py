@@ -45,9 +45,12 @@ def condor_submit(condor_file, username=None, results=False):
     #Get condor_process number...
 #    process_id = int(process_output.splitlines()[2].split()[5].strip('.'))
     #use a regular expression to parse the process output
-    r=re.compile(r'[\s\S]*submitted to cluster (?P<id>\d+).*')
-    process_id = int(r.match(process_output).group('id'))
-    
+    try:
+        r=re.compile(r'[\s\S]*submitted to cluster (?P<id>\d+).*')
+        process_id = int(r.match(process_output).group('id'))
+    except:
+        process_id = -1 #Return -1 if for some reason the submit failed
+        logging.exception('Failed to submit job')
     #TODO: Should we sleep here for a bit? 1s? 10s?
     
     return process_id
@@ -85,39 +88,50 @@ def run():
             #Load the model
             model = CopasiModel(job.get_filename())
             #Prepare the .job files
+            #Check the job rank. If it's been set, use it. Otherwise set to 0
+            if job.rank != None or job.rank != '':
+                rank = job.rank
+            else:
+                rank = '0'
+                
             if job.job_type == 'SO':
-                condor_jobs = model.prepare_so_condor_jobs()
+                condor_jobs = model.prepare_so_condor_jobs(rank=rank)
             elif job.job_type == 'SS':
                 no_of_jobs = model.prepare_ss_task(job.runs, skip_load_balancing=job.skip_load_balancing)
-                condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs)
+                condor_jobs = model.prepare_ss_condor_jobs(no_of_jobs, rank=rank)
                 
             elif job.job_type == 'PS':
                 no_of_jobs = model.prepare_ps_jobs(skip_load_balancing=job.skip_load_balancing)
-                condor_jobs = model.prepare_ps_condor_jobs(no_of_jobs)
+                condor_jobs = model.prepare_ps_condor_jobs(no_of_jobs, rank=rank)
                 
             elif job.job_type == 'OR':
                 no_of_jobs = model.prepare_or_jobs(job.runs, skip_load_balancing=job.skip_load_balancing)
-                condor_jobs = model.prepare_or_condor_jobs(no_of_jobs)
+                condor_jobs = model.prepare_or_condor_jobs(no_of_jobs, rank=rank)
                 
             elif job.job_type == 'PR':
                 no_of_jobs = model.prepare_pr_jobs(job.runs, skip_load_balancing=job.skip_load_balancing, custom_report=job.custom_report)
-                condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs)
+                condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs, rank=rank)
             elif job.job_type == 'OD':
                 #No need to prepare the job. This was done as the job was submitted
-                condor_jobs = model.prepare_od_condor_jobs()           
+                condor_jobs = model.prepare_od_condor_jobs(rank=rank)
             elif job.job_type == 'RW':
                 no_of_jobs = model.prepare_rw_jobs(job.runs)
-                condor_jobs = model.prepare_rw_condor_jobs(no_of_jobs, job.raw_mode_args)
+                condor_jobs = model.prepare_rw_condor_jobs(no_of_jobs, job.raw_mode_args, rank=rank)
             else:
                 continue
                
             for cj in condor_jobs:
                 try:
                     condor_job_id = condor_submit(cj['spec_file'], username=str(job.user.username))
+
+                    #Check that the condor job was submitted successfully
+                    assert condor_job_id != -1
+                    
                     condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                     condor_job.save()
                 except:
                     logging.exception('Error submitting job(s) to Condor; ensure condor scheduler service is running. Job: ' + str(job.id)  + ', User: ' + str(job.user))
+                    raise
             logging.debug('Submitted ' + str(len(condor_jobs)) + ' to Condor')
             job.status = 'S'
             job.last_update=datetime.datetime.today()
