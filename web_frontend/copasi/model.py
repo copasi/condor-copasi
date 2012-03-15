@@ -1697,7 +1697,7 @@ class CopasiModel:
         for i in range(jobs):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
             #In addition to the copasi file, also transmit the data files. These are listed in files_string
-            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string)            
+            condor_job_string = Template(condor_spec.raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string, rank=rank)            
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
