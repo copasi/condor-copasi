@@ -70,6 +70,9 @@ class Job(models.Model):
     #String containing the optional rank parameter for the job
     rank = models.CharField(max_length=5000, null=True, blank=True)
     
+    #The number of seconds of usage time all the child jobs used. Can be calculated from the child Condor Jobs
+    run_time = models.FloatField(null=True,blank=True)
+    
     class Meta:
         unique_together = ('user', 'name', 'submitted')
         ordering = ['-last_update']

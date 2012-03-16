@@ -26,7 +26,8 @@ class UploadModelForm(forms.Form):
         self.fields['rank'].help_text += 'If you are unsure how to use rank, then do not change from the default value'
         
     model_file = forms.FileField()
-    job_name = forms.RegexField(max_length=64, regex=re.compile(r'^(a-z|A-Z|0-9)*[^%]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
+    #Use a regex to exclude slashes or percentages. Also, must begin with non-whitespace character
+    job_name = forms.RegexField(max_length=64, regex=re.compile(r'^[^%/\\\s]+[^%/\\]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
     
     
     rank = forms.CharField(max_length=5000, label='Rank', help_text='', initial='0', widget=forms.TextInput(attrs={'size':'40'}))

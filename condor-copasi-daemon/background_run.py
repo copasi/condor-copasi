@@ -264,13 +264,22 @@ def run():
                 
                 #Open the log file and check the exit status
                 failed_job_count = 0
+                #keep a count of the total run time for the job
+                total_run_time = 0.0
                 for condor_job in condor_jobs:
                     try:
                         filename=os.path.join(job.get_path(), condor_job.log_file)
                         log = condor_log.Log(filename)
                         assert log.termination_status == 0
+                        #While we're here, update the CondorJob run time
+                        condor_job.run_time = log.running_time_in_days
+                        condor_job.save()
+                        total_run_time += condor_job.run_time
+                        
                     except:
                         failed_job_count += 1
+                    
+                    job.run_time = total_run_time
                     
                 #Now, depending on the type of job, mark it as either 'error' nor not.
                 #For SS task, we require all jobs to have finished successfully
@@ -352,7 +361,7 @@ def run():
                 #Collate the results, and ship them off in a new condor job to be averaged
                 #Use this to keep track of the number of jobs we split the task in to
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
-                cj = model.prepare_ss_process_job(len(condor_jobs), job.runs)
+                cj = model.prepare_ss_process_job(len(condor_jobs), job.runs, rank=job.rank)
                 #Submit the new job to condor
                 condor_job_id = condor_submit(cj['spec_file'], username=str(job.user.username), results=True)
                 #And store a new condor job in the database
@@ -481,7 +490,49 @@ def run():
                 logging.exception('Exception: error sending email')
             
             
+    ############
+    
+    
+    #Go through all condor jobs with status 'F' and blank run time
+    #Then extract the run time from the log and save it to the database
+    #This step should only be performed once, after the upgrade from version 0.4
+    #to 0.5. From then on, the run time should be automatically stored to the database
+    
+    condor_jobs = models.CondorJob.objects.filter(queue_status='F').filter(run_time = None)
+    
+    #To save doing another database hit, make a note if we're actually updating
+    #any jobs, since most of the time we won't be
+    if len(condor_jobs) > 0:
+        updated_legacy_jobs = True
+    else:
+        updated_legacy_jobs = False
+    
+    for condor_job in condor_jobs:
+        try:
+            job = condor_job.parent
+            filename=os.path.join(job.get_path(), condor_job.log_file)
+            log = condor_log.Log(filename)
+            condor_job.run_time = log.running_time_in_days
+            condor_job.save()
+        except:
+            logging.error('Error updating legacy job: ' + str(job.id))
 
+    
+    if updated_legacy_jobs:
+        legacy_jobs = models.Job.objects.filter(status='C').filter(run_time=None)
+        for job in legacy_jobs:
+            try:
+                
+                condor_jobs = models.CondorJob.objects.filter(parent=job)
+                #keep a tally of total run time
+                total_run_time = 0.0
+                for condor_job in condor_jobs:
+                    total_run_time += condor_job.run_time
+                job.run_time = total_run_time
+                job.save()
+                logging.debug('Updated run time for legacy job ' + str(job.id))
+            except:
+                logging.warning('Error calculating total run time for legacy job ' + str(job.id))
         
         
     ############

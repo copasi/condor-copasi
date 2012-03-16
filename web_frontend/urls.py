@@ -45,6 +45,9 @@ urlpatterns = patterns('',
     url(r'^my_account/jobs/details/(?P<job_name>.+)/$', db.jobDetails, name="job_details"),
     url(r'^my_account/jobs/compare/so/$', db.compareSOJobs, name="so_compare"),
     url(r'^help/$', helpPage, name="help"),
+    url(r'^usage/$', db.usage, name="usage_home"),
+    url(r'^usage/(?P<period>.*)/$', db.usage, name="usage_by_period"),
+    url(r'^usage/output/(?P<period>.+)/by_user.png', db.usage_by_user, name='usage_by_user'),
 )
 
 if settings.DEBUG:

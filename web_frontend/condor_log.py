@@ -114,6 +114,7 @@ class Log:
                 self.running_time = self.termination_time - self.execution_start
             else:
                 self.running_time = self.remote_usage_time
+            self.running_time_in_days = float(self.running_time.days) + (float(self.running_time.seconds) / 86400.00)
               
                 
         except:

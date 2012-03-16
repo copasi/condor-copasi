@@ -16,6 +16,13 @@ from django.core.urlresolvers import reverse
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from web_frontend.condor_copasi_db.web_forms import *
 
+os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
+import matplotlib
+matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
+import matplotlib.pyplot as plt
+
+
+
 
 #Generic function for saving a django UploadedFile to a destination
 def handle_uploaded_file(f,destination):
@@ -583,17 +590,10 @@ def jobDetails(request, job_name):
     job_removal_days = settings.COMPLETED_JOB_REMOVAL_DAYS
     if job.finish_time != None:
         job_removal_date = job.finish_time + datetime.timedelta(days=job_removal_days)
-        
-        #Calculate the total amount of CPU time used by the individual condor jobs
-        total_cpu_time = datetime.timedelta()
-        for condor_job in models.CondorJob.objects.filter(parent=job):
-            try:
-                log_file = os.path.join(job.get_path(), condor_job.log_file)
-                log = condor_log.Log(log_file)
-                total_cpu_time += log.running_time
-            except:
-                pass
-                
+
+        #Get the new calculated cpu time from the database
+        total_cpu_time = datetime.timedelta(job.run_time)
+    
     #If job type is 'PR' then use local variable auto_model_download
     auto_model_download = (job.skip_model_generation != True) #Should be true when field is True or Null
     return render_to_response('my_account/job_details.html', locals(), RequestContext(request))
@@ -824,12 +824,9 @@ def ss_plot(request, job_name):
     except:
         raise
         return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
-    try:
-        os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
-        import matplotlib
-        matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
-        import matplotlib.pyplot as plt
 
+    try:
+        
         #Look at the GET data to see what chart options have been set:
         get_variables = request.GET.get('variables')
         log = request.GET.get('log', 'false')
@@ -928,11 +925,6 @@ def so_progress_plot(request, job_name):
         raise
         return web_frontend_views.handle_error(request, 'Error reading results',['The requested job output could not be read'])
     try:
-        os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
-        import matplotlib
-        matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
-        import matplotlib.pyplot as plt
-
         #Look at the GET data to see what chart options have been set:
         get_variables = request.GET.get('variables')
         log = request.GET.get('log', 'false')
@@ -1149,4 +1141,67 @@ def compareSOJobs(request):
         jobs.append((job, condor_jobs, form['%d_selected' % job.id], form['%d_quantification' % job.id]))
         
     return render_to_response('my_account/so_compare.html', locals(), RequestContext(request))
+    
+@login_required
+def usage(request, period=None):
+    
+    if period == None:
+        return render_to_response('usage/usage.html', locals(), RequestContext(request))
+    elif period == 'all':
+        jobs = models.Job.objects.all()
+    else:
+        jobs = []
+    #Build up a pie chart containing 
+    
+    total_cpu_time_days = 0.0
+    for job in jobs:
+        total_cpu_time_days += job.run_time
+        print job.id
+        print datetime.timedelta(job.run_time)
+    total_cpu_time = datetime.timedelta(total_cpu_time_days)
+    return render_to_response('usage/usage.html', locals(), RequestContext(request))
 
+@login_required
+def usage_by_user(request, period):
+
+    #period_string = request.GET.get('period', 'all')
+    #print period_string
+    print period
+    users = User.objects.all()
+
+    #Store our results in lists containing the user and their usage time
+    user_list = []
+    run_time_list=[]
+    
+    for user in users:
+        #Calculate the run time for each user
+        jobs = models.Job.objects.filter(user=user)
+        run_time = 0.0
+        for job in jobs:
+            run_time += job.run_time
+        
+        #Append to the results
+        if user.first_name or user.last_name == '':
+            username = user.username
+        else:
+            username = '%s %s (%s)' % (user.first_name, user.last_name, user.username)
+        
+        if run_time > 0.0:
+            user_list.append(username)
+            run_time_list.append(run_time)
+    #Normalize the run time list
+    normalized_run_time_list = []
+    run_time_sum = sum(run_time_list)
+    for run_time in run_time_list:
+        normalized_run_time = run_time/run_time_sum
+        normalized_run_time_list.append(normalized_run_time)
+
+    #Now create the figure
+    matplotlib.rc('font', size=15)
+    fig = plt.figure(figsize=(6,6))
+    plt.pie(normalized_run_time_list, labels=user_list, shadow=True)
+    
+    response = HttpResponse(mimetype='image/png', content_type='image/png')
+    fig.savefig(response, format='png', transparent=False, dpi=60)
+    return response
+    
