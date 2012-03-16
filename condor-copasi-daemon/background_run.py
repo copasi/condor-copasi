@@ -516,6 +516,11 @@ def run():
             condor_job.save()
         except:
             logging.error('Error updating legacy job: ' + str(job.id))
+            try:
+                condor_job.run_time = 0.0
+                condor_job.save()
+            except:
+                pass
 
     
     if updated_legacy_jobs:

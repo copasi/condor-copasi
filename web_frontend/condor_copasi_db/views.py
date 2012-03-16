@@ -592,7 +592,10 @@ def jobDetails(request, job_name):
         job_removal_date = job.finish_time + datetime.timedelta(days=job_removal_days)
 
         #Get the new calculated cpu time from the database
-        total_cpu_time = datetime.timedelta(job.run_time)
+        if job.run_time != None:
+            total_cpu_time = datetime.timedelta(job.run_time)
+        else:
+            total_cpu_time = datetime.timedelta(0)
     
     #If job type is 'PR' then use local variable auto_model_download
     auto_model_download = (job.skip_model_generation != True) #Should be true when field is True or Null
@@ -1148,7 +1151,7 @@ def usage(request, period=None):
     if period == None:
         return render_to_response('usage/usage.html', locals(), RequestContext(request))
     elif period == 'all':
-        jobs = models.Job.objects.all()
+        jobs = models.Job.objects.filter(status='C')
     else:
         jobs = []
     #Build up a pie chart containing 
@@ -1175,7 +1178,7 @@ def usage_by_user(request, period):
     
     for user in users:
         #Calculate the run time for each user
-        jobs = models.Job.objects.filter(user=user)
+        jobs = models.Job.objects.filter(user=user).filter(status='C')
         run_time = 0.0
         for job in jobs:
             run_time += job.run_time
