@@ -20,9 +20,9 @@ Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
                 <a href="{% url index %}">Condor-COPASI</a>
             </div>
             <div id="user_tools">
-                {% if user.is_authenticated %}
-                Welcome <b> {{ user.username }} </b> | 
-                {% if user.is_staff %}
+                {% if request.user.is_authenticated %}
+                Welcome <b> {{ request.user.username }} </b> | 
+                {% if request.user.is_staff %}
                 <a href="{% url admin:index %}">Administration</a> |
                 {% endif %}
                 <a href="{% url web_frontend.views.logoutPage %}">Logout</a>
@@ -46,8 +46,7 @@ Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
                     {% block accountlist %}{% endblock %}
                     <li><a href="{% url web_frontend.condor_copasi_db.views.tasks %}">Tasks</a></li>
                     {% block tasklist %}{% endblock %}
-                    <!-- <li><a href="{% url web_frontend.condor_copasi_db.views.usage %}">Usage Statistics</a></li> !-->
-                    {% block usagelist %}{% endblock %}
+                    <li><a href="{% url web_frontend.condor_copasi_db.views.usageHome %}">Usage Statistics</a></li>                    {% block usagelist %}{% endblock %}
                     {%endif%}
                     <li><a href="{% url help %}">Help</a></li>
                 </ul>

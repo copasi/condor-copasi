@@ -129,6 +129,11 @@ def run():
                     
                     condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                     condor_job.save()
+                    if job.condor_jobs == None:
+                        job.condor_jobs = 1
+                    else:
+                        job.condor_jobs += 1
+                        
                 except:
                     logging.exception('Error submitting job(s) to Condor; ensure condor scheduler service is running. Job: ' + str(job.id)  + ', User: ' + str(job.user))
                     raise
@@ -368,7 +373,13 @@ def run():
                 condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                 condor_job.save()
                 job.status='X' # Set the job status as processing on condor
-
+                
+                #Update the condor job count
+                if job.condor_jobs == None:
+                    job.condor_jobs = 1
+                else:
+                    job.condor_jobs += 1
+                
                 job.last_update=datetime.datetime.today()
                 job.save()
                 try:
@@ -538,7 +549,20 @@ def run():
                 logging.debug('Updated run time for legacy job ' + str(job.id))
             except:
                 logging.warning('Error calculating total run time for legacy job ' + str(job.id))
+                
+                
+    #Now we need to update the condor_jobs field for each job by counting the number of associated condor jobs.
+    
+    jobs = models.Job.objects.filter(condor_jobs=None)
+    if len(jobs) > 0:
+        logging.debug('Jobs found without recorded condor_job count. Updating')
+    for job in jobs:
+        condor_job_set = models.CondorJob.objects.filter(parent=job)
         
+        condor_jobs = len(condor_job_set)
+        
+        job.condor_jobs = condor_jobs
+        job.save()
         
     ############
     #Go through completed jobs or jobs with errors, and remove anything older than settings.COMPLETED_JOB_REMOVAL_DAYS

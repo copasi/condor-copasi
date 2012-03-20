@@ -17,6 +17,7 @@ urlpatterns = patterns('',
 
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls), name="adminsite"),
+    url(r'^my_admin/jsi18n', 'django.views.i18n.javascript_catalog'),
     url(r'^$', mainPage, name="index"),
     url(r'^login/$', loginPage, name="login"),
     url(r'^logout/$',logoutPage, name="logout"),
@@ -45,9 +46,10 @@ urlpatterns = patterns('',
     url(r'^my_account/jobs/details/(?P<job_name>.+)/$', db.jobDetails, name="job_details"),
     url(r'^my_account/jobs/compare/so/$', db.compareSOJobs, name="so_compare"),
     url(r'^help/$', helpPage, name="help"),
-    url(r'^usage/$', db.usage, name="usage_home"),
-    url(r'^usage/(?P<period>.*)/$', db.usage, name="usage_by_period"),
-    url(r'^usage/output/(?P<period>.+)/by_user.png', db.usage_by_user, name='usage_by_user'),
+    url(r'^usage/$', db.usageHome, name="usage_home"),
+    url(r'^usage/all/$', db.usageByPeriod, {'start':'all', 'end':'all'} ,name="usage_by_period_all"),
+    url(r'^usage/(?P<start>.+)/to/(?P<end>.+)/$', db.usageByPeriod, name="usage_by_period"),
+
 )
 
 if settings.DEBUG:

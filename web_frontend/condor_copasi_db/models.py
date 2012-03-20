@@ -31,6 +31,8 @@ class Job(models.Model):
         ('X', 'Finished, processing data on condor'),
         ('C', 'Complete'),
         ('E', 'Error'),
+        ('D', 'Marked for deletion'),
+        ('Z', 'Deleted'),
     )
     #The status of the whole job
     status = models.CharField(max_length=1, choices=STATUS_CHOICES)
@@ -73,6 +75,10 @@ class Job(models.Model):
     #The number of seconds of usage time all the child jobs used. Can be calculated from the child Condor Jobs
     run_time = models.FloatField(null=True,blank=True)
     
+    #New field to store the number of Condor jobs associated with this job. Not strictly necessary, but will save having to count through thousands of jobs and should speed up page loading times.
+    condor_jobs = models.IntegerField(null=True,blank=True)
+    
+    
     class Meta:
         unique_together = ('user', 'name', 'submitted')
         ordering = ['-last_update']
@@ -86,12 +92,19 @@ class Job(models.Model):
         return os.path.join(settings.USER_FILES_DIR, str(self.user.username), str(self.id), self.model_name)
         
     def delete(self, *args, **kwargs):
-        """Override the build-in delete. First remove all child jobs and call call super.delete. finally, remove the directory"""
+        """Override the build-in delete. First, remove the directory. Then mark the job as deleted, and finally remove all child jobs"""
         try:
             shutil.rmtree(self.get_path())
         except:
             pass
-        super(Job, self).delete(*args, **kwargs)
+        #super(Job, self).delete(*args, **kwargs)
+        self.status = 'Z'
+        self.save()
+        condor_jobs = CondorJob.objects.filter(parent=self)
+        for job in condor_jobs:
+            job.delete()
+        
+        
 class CondorJob(models.Model):
     #The parent job
     parent = models.ForeignKey(Job)
@@ -122,6 +135,7 @@ class CondorJob(models.Model):
     queue_id = models.IntegerField(null=True, unique=True)
     #The amount of computation time in seconds that the condor job took to finish. Note, this does not include any interrupted runs. Will not be set until the condor job finishes.
     run_time = models.FloatField(null=True)
+
     
     def __unicode__(self):
         return unicode(self.queue_id)

@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.template import RequestContext
+from django.contrib.admin import widgets                                       
 import web_frontend.condor_copasi_db.views
 from web_frontend import settings, condor_log, motionchart
 from web_frontend.condor_copasi_db import models
@@ -15,11 +16,13 @@ from web_frontend.copasi.model import CopasiModel
 from django.core.urlresolvers import reverse
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from web_frontend.condor_copasi_db.web_forms import *
+from math import cos, pi, sin
 
 os.environ['HOME'] = settings.USER_FILES_DIR #This needs to be set to a writable directory
 import matplotlib
 matplotlib.use('Agg') #Use this so matplotlib can be used on a headless server. Otherwise requires DISPLAY env variable to be set.
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import annotate
 
 
 
@@ -295,7 +298,7 @@ def newTask(request, type):
                         rank = form.cleaned_data['rank']
 
                     #Create the job
-                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=name, submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=skip_load_balancing, custom_report=custom_report, raw_mode_args=raw_mode_args, skip_model_generation=skip_model_generation, rank=rank)
+                    job = models.Job(job_type=type, user=request.user, model_name=model_file.name, status='U', name=name, submission_time=datetime.datetime.today(), runs = runs, last_update=datetime.datetime.today(), skip_load_balancing=skip_load_balancing, custom_report=custom_report, raw_mode_args=raw_mode_args, skip_model_generation=skip_model_generation, rank=rank, condor_jobs=0)
 
                     job.save()
                     #And then create a new directory in the settings.USER_FILES dir
@@ -577,6 +580,7 @@ def jobDetails(request, job_name):
     try:
         model = CopasiModel(job.get_filename())
     except:
+        raise
         return web_frontend_views.handle_error(request, 'Error Loading Model',[])
     pageTitle = 'Job Details: ' + job.name
     running_condor_jobs = len(models.CondorJob.objects.filter(parent=job, queue_status='R'))
@@ -1144,67 +1148,124 @@ def compareSOJobs(request):
         jobs.append((job, condor_jobs, form['%d_selected' % job.id], form['%d_quantification' % job.id]))
         
     return render_to_response('my_account/so_compare.html', locals(), RequestContext(request))
+
+
+class dateTimePeriodForm(forms.Form):
+    """Form for selecting dates for the usage statistics page"""
+    start_date = forms.DateField(required=True, help_text='YYYY-MM-DD', widget=widgets.AdminDateWidget())
+    end_date = forms.DateField(required=True, help_text='YYYY-MM-DD', widget=widgets.AdminDateWidget())
     
 @login_required
-def usage(request, period=None):
+def usageHome(request):
+    Form = dateTimePeriodForm
     
-    if period == None:
-        return render_to_response('usage/usage.html', locals(), RequestContext(request))
-    elif period == 'all':
-        jobs = models.Job.objects.filter(status='C')
+    if request.method == 'POST':
+        try:
+            form = Form(request.POST, request.FILES)
+            if form.is_valid():
+                s = form.cleaned_data['start_date']
+                e = form.cleaned_data['end_date']
+                start_date = datetime.date(s.year, s.month, s.day)
+                end_date = datetime.date(e.year, e.month, e.day)
+                
+                return HttpResponseRedirect(reverse('usage_by_period', args=[s,e]))
+            
+        except:
+            return web_frontend_views.handle_error(request, 'Error processing dates',['An error occured while trying to process the given dates'])
     else:
-        jobs = []
-    #Build up a pie chart containing 
+        form = Form()
     
-    total_cpu_time_days = 0.0
-    for job in jobs:
-        total_cpu_time_days += job.run_time
-        print job.id
-        print datetime.timedelta(job.run_time)
-    total_cpu_time = datetime.timedelta(total_cpu_time_days)
-    return render_to_response('usage/usage.html', locals(), RequestContext(request))
+    today = datetime.date.today()
+    year_start = datetime.date(year=today.year, month=1, day=1)
+    month_start = datetime.date(year=today.year, month=today.month, day=1)
+    week_start = today - datetime.timedelta(today.weekday())
+    
+    
+    #Plot usage by month
+    jobs = models.Job.objects.all().order_by('submission_time')
+    
+    #Create a list of months vs total job usage    
+    
+    
+    
+    return render_to_response('usage/usageHome.html', locals(), RequestContext(request))
 
 @login_required
-def usage_by_user(request, period):
-
-    #period_string = request.GET.get('period', 'all')
-    #print period_string
-    print period
-    users = User.objects.all()
-
-    #Store our results in lists containing the user and their usage time
-    user_list = []
-    run_time_list=[]
+def usageByPeriod(request, start=None, end=None):
     
+    if start == None or end == None:
+        return render_to_response('usage/usage.html', locals(), RequestContext(request))
+    elif start == 'all':
+        selected_jobs = models.Job.objects.all()
+        period_string = 'All Time'
+    else:
+        try:
+            #Construct the period string...
+            period_string = start + ' to ' + end
+            
+            #Deconstruct the date strings to extract year, month, day
+            start_list = start.split('-')
+            end_list = end.split('-')
+            
+            start_date = datetime.datetime(int(start_list[0]), int(start_list[1]), int(start_list[2]))
+            end_date = datetime.datetime(int(end_list[0]), int(end_list[1]), int(end_list[2]))
+            
+            selected_jobs = models.Job.objects.filter(submission_time__gte=start_date).filter(submission_time__lte=end_date)
+            
+        except:
+            return web_frontend_views.handle_error(request, 'Error processing dates',['An error occured while trying to process the given dates']) 
+        
+        
+        
+    total_cpu_time_days = 0.0
+    for job in selected_jobs:
+        try:
+            total_cpu_time_days += job.run_time
+        except:
+            pass
+            
+    temp_cpu_time = datetime.timedelta(total_cpu_time_days)
+    #Round the timedelta seconds
+    total_cpu_time = datetime.timedelta(days=temp_cpu_time.days, seconds=temp_cpu_time.seconds + round(temp_cpu_time.microseconds/1000000.0))
+    
+    usage_list = []
+    
+    #Build up a data structure for the CPU usage, job usage etc by user pie chart
+    users = User.objects.all().order_by('date_joined')
     for user in users:
         #Calculate the run time for each user
-        jobs = models.Job.objects.filter(user=user).filter(status='C')
+        jobs = selected_jobs.filter(user=user)
         run_time = 0.0
-        for job in jobs:
-            run_time += job.run_time
         
+        job_count = len(jobs)
+        
+        for job in jobs:
+            try:            
+                run_time += job.run_time
+            except:
+                pass
+                    
         #Append to the results
-        if user.first_name or user.last_name == '':
+        if user.first_name == '' or user.last_name == '':
             username = user.username
         else:
             username = '%s %s (%s)' % (user.first_name, user.last_name, user.username)
         
-        if run_time > 0.0:
-            user_list.append(username)
-            run_time_list.append(run_time)
-    #Normalize the run time list
-    normalized_run_time_list = []
-    run_time_sum = sum(run_time_list)
-    for run_time in run_time_list:
-        normalized_run_time = run_time/run_time_sum
-        normalized_run_time_list.append(normalized_run_time)
+        usage= {}
+        usage['user'] = username
+        usage['cpu_time'] = "%.2f" % run_time
+        usage['job_count'] = job_count
+        
+        
+        condor_job_count = 0
+        for job in jobs:
+            try:
+                condor_job_count += job.condor_jobs
+            except:
+                pass
+                        
+        usage['condor_job_count'] = condor_job_count
+        
+        usage_list.append(usage)
+    return render_to_response('usage/usageByPeriod.html', locals(), RequestContext(request))
 
-    #Now create the figure
-    matplotlib.rc('font', size=15)
-    fig = plt.figure(figsize=(6,6))
-    plt.pie(normalized_run_time_list, labels=user_list, shadow=True)
-    
-    response = HttpResponse(mimetype='image/png', content_type='image/png')
-    fig.savefig(response, format='png', transparent=False, dpi=60)
-    return response
-    
