@@ -9,9 +9,9 @@ window.__admin_media_prefix__ = "{% filter escapejs %}{% admin_media_prefix %}{%
 </script>
 
 
-<script type="text/javascript" src="/my_admin/jsi18n/"></script>
-<script type="text/javascript" src="/admin/static/js/core.js"></script>
-<link rel="stylesheet" type="text/css" href="/admin/static/css/widgets.css"/>
+<script type="text/javascript" src="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}my_admin/jsi18n/"></script>
+<script type="text/javascript" src="http://{{ host }}{% admin_media_prefix %}js/core.js"></script>
+<link rel="stylesheet" type="text/css" href="http://{{ host }}{% admin_media_prefix %}css/widgets.css"/>
 
 {{ form.media }}
 

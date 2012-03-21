@@ -46,7 +46,7 @@ Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
                     {% block accountlist %}{% endblock %}
                     <li><a href="{% url web_frontend.condor_copasi_db.views.tasks %}">Tasks</a></li>
                     {% block tasklist %}{% endblock %}
-                    <li><a href="{% url web_frontend.condor_copasi_db.views.usageHome %}">Usage Statistics</a></li>                    {% block usagelist %}{% endblock %}
+                    <li><a href="{% url usage_home %}">Usage Statistics</a></li>                    {% block usagelist %}{% endblock %}
                     {%endif%}
                     <li><a href="{% url help %}">Help</a></li>
                 </ul>
