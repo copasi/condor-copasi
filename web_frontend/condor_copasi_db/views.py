@@ -1196,8 +1196,8 @@ def usageHome(request):
     end_time = jobs[len(jobs)-1].submission_time
     
     start_date = datetime.date(year=start_time.year, month=start_time.month, day=start_time.day)
-    end_date = datetime.date(year=end_time.year, month=end_time.month, day=end_time.day)
-    
+    #end_date = datetime.date(year=end_time.year, month=end_time.month, day=end_time.day)
+    end_date = datetime.date.today()
     def daterange(start_date, end_date):
         for n in range((end_date - start_date).days):
             yield start_date + datetime.timedelta(n)
