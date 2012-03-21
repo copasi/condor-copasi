@@ -49,7 +49,6 @@ urlpatterns = patterns('',
     url(r'^usage/$', db.usageHome, name="usage_home"),
     url(r'^usage/all/$', db.usageByPeriod, {'start':'all', 'end':'all'} ,name="usage_by_period_all"),
     url(r'^usage/(?P<start>.+)/to/(?P<end>.+)/$', db.usageByPeriod, name="usage_by_period"),
-
 )
 
 if settings.DEBUG:
