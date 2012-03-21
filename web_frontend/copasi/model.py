@@ -1898,8 +1898,7 @@ class CopasiModel:
                     startValue = parameter
                     break
             assert startValue != None
-            print "start value: "
-            print startValue
+
             #Set the start value:
             startValue.attrib['value'] = best_parameter_values[parameter_index][1]
             

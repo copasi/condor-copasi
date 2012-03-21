@@ -1157,6 +1157,8 @@ class dateTimePeriodForm(forms.Form):
     
 @login_required
 def usageHome(request):
+    pageTitle = 'Usage Statistics'
+
     Form = dateTimePeriodForm
     
     if request.method == 'POST':
@@ -1184,14 +1186,67 @@ def usageHome(request):
     #Plot usage by month
     jobs = models.Job.objects.all().order_by('submission_time')
     
-    #Create a list of months vs total job usage    
+    #Create a list of total jobs submitted per day
     
+    date_list = {}
+    
+    #Fill date_list with the dates in the range from the start and end date
+    
+    start_time = jobs[0].submission_time
+    end_time = jobs[len(jobs)-1].submission_time
+    
+    start_date = datetime.date(year=start_time.year, month=start_time.month, day=start_time.day)
+    end_date = datetime.date(year=end_time.year, month=end_time.month, day=end_time.day)
+    
+    def daterange(start_date, end_date):
+        for n in range((end_date - start_date).days):
+            yield start_date + datetime.timedelta(n)
+        yield end_date
+    
+    for date in daterange(start_date, end_date):
+        date_list[date] = {}
+        date_list[date]['jobs'] = 0
+        date_list[date]['cpu'] = 0
+        date_list[date]['condor_jobs'] = 0
+
+
+        
+    for job in jobs:
+        try:
+            sub_time = job.submission_time
+            date = datetime.date(year=sub_time.year, month=sub_time.month, day=sub_time.day)
+
+            if date in date_list:
+                date_list[date]['jobs'] += 1
+                if job.run_time != None:
+                    date_list[date]['cpu'] += job.run_time
+                if job.condor_jobs != None:
+                    date_list[date]['condor_jobs'] += job.condor_jobs
+            else:
+                date_list[date] = {}
+                date_list[date]['jobs'] = 1
+                if job.run_time != None:
+                    date_list[date]['cpu'] = job.run_time
+                else:
+                    date_list[date]['cpu'] = 0
+                    
+                if job.condor_jobs != None:
+                    date_list[date]['condor_jobs'] = job.condor_jobs
+                else:
+                    date_list[date]['condor_jobs'] = 0
+    
+        except:
+            pass
+    
+
     
     
     return render_to_response('usage/usageHome.html', locals(), RequestContext(request))
 
 @login_required
 def usageByPeriod(request, start=None, end=None):
+    
+    pageTitle = 'Usage Statistics'
     
     if start == None or end == None:
         return render_to_response('usage/usage.html', locals(), RequestContext(request))
@@ -1207,10 +1262,12 @@ def usageByPeriod(request, start=None, end=None):
             start_list = start.split('-')
             end_list = end.split('-')
             
-            start_date = datetime.datetime(int(start_list[0]), int(start_list[1]), int(start_list[2]))
-            end_date = datetime.datetime(int(end_list[0]), int(end_list[1]), int(end_list[2]))
-            
+            start_date = datetime.datetime(year=int(start_list[0]), month=int(start_list[1]), day=int(start_list[2]))
+            end_date = datetime.datetime(year=int(end_list[0]), month=int(end_list[1]), day=int(end_list[2]), hour=23, minute=59, second=59)
+
             selected_jobs = models.Job.objects.filter(submission_time__gte=start_date).filter(submission_time__lte=end_date)
+            
+            
             
         except:
             return web_frontend_views.handle_error(request, 'Error processing dates',['An error occured while trying to process the given dates']) 
@@ -1253,7 +1310,7 @@ def usageByPeriod(request, start=None, end=None):
         
         usage= {}
         usage['user'] = username
-        usage['cpu_time'] = "%.2f" % run_time
+        usage['cpu_time'] = "%.5f" % run_time
         usage['job_count'] = job_count
         
         

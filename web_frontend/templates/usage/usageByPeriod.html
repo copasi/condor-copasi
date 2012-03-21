@@ -1,0 +1,140 @@
+{% extends "usage/usageHome.html" %}
+
+{% block head %}
+
+    <!--Load the AJAX API-->
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+
+      // Load the Visualization API and the piechart package.
+      google.load('visualization', '1.0', {'packages':['corechart']});
+
+      
+      
+      // Set a callback to run when the Google Visualization API is loaded.
+      google.setOnLoadCallback(drawCPUUsageChart);
+      google.setOnLoadCallback(drawJobUsageChart);
+      google.setOnLoadCallback(drawCondorJobUsageChart);
+      
+      
+      
+      // Callback that creates and populates a data table,
+      // instantiates the pie chart, passes in the data and
+      // draws it.
+      function drawCPUUsageChart() {
+
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'User');
+        data.addColumn('number', 'Usage');
+        data.addRows([
+        {% for usage in usage_list %}
+          ['{{ usage.user }}', {{ usage.cpu_time }}],
+        {% endfor %}
+        ]);
+
+        // Set chart options
+        var options = {'title':'CPU usage (days) by user',
+                       'width':400,
+                       'height':300};
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.PieChart(document.getElementById('cpu_usage_chart_div'));
+        chart.draw(data, options);
+      }
+      
+      
+      function drawJobUsageChart() {
+
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+data.addColumn('string', 'User');
+        data.addColumn('number', 'Taks');
+        data.addRows([
+        {% for usage in usage_list %}
+          ['{{ usage.user }}', {{ usage.job_count }}],
+        {% endfor %}
+        ]);
+
+        // Set chart options
+        var options = {'title':'Number of tasks submited by user',
+                       'width':400,
+                       'height':300};
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.PieChart(document.getElementById('job_usage_chart_div'));
+        chart.draw(data, options);
+      }
+      
+      function drawCondorJobUsageChart() {
+
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+data.addColumn('string', 'User');
+        data.addColumn('number', 'Condor jobs');
+        data.addRows([
+        {% for usage in usage_list %}
+          ['{{ usage.user }}', {{ usage.condor_job_count }}],
+        {% endfor %}
+        ]);
+
+        // Set chart options
+        var options = {'title':'Number of Condor jobs submited by user',
+                       'width':400,
+                       'height':300};
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.PieChart(document.getElementById('condor_job_usage_chart_div'));
+        chart.draw(data, options);
+      }
+      
+    </script>
+
+
+{% endblock %}
+
+
+{% block breadcrumbs_l3 %} <a href="{% url usage_by_period start end %}">{{period_string}}</a> &gt;&gt; {% block breadcrumbs_l4 %}{%endblock%}{%endblock%}
+
+{% block usagelist %}
+<ul>
+
+</ul>
+{% endblock %}
+
+{%block body %}
+
+{% if start_date %}
+<p><b>From {{start_date|date}} to {{end_date|date}}</b></p>
+{% else %}
+<p><b> For all time </b></p>
+{% endif %}
+
+{% if not selected_jobs %}
+
+<b>No usage was recorded in the selected time period</b>
+
+{% else %}
+
+
+
+
+
+
+<p>CPU time used by all users:
+
+{{ total_cpu_time }}
+
+</p>
+
+
+
+<div id="cpu_usage_chart_div"></div>
+
+<div id="job_usage_chart_div"></div>
+
+<div id="condor_job_usage_chart_div"></div>
+
+
+{% endif %}
+{%endblock%}

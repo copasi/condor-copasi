@@ -1,0 +1,76 @@
+{% extends "default.html" %}
+
+{% block head %}
+
+{% load adminmedia %}
+
+<script type="text/javascript">
+window.__admin_media_prefix__ = "{% filter escapejs %}{% admin_media_prefix %}{% endfilter %}";
+</script>
+
+
+<script type="text/javascript" src="/my_admin/jsi18n/"></script>
+<script type="text/javascript" src="/admin/static/js/core.js"></script>
+<link rel="stylesheet" type="text/css" href="/admin/static/css/widgets.css"/>
+
+{{ form.media }}
+
+<script type='text/javascript' src='http://www.google.com/jsapi'></script>
+<script type='text/javascript'>
+  google.load('visualization', '1', {'packages':['annotatedtimeline']});
+  google.setOnLoadCallback(drawChart);
+  function drawChart() {
+    var data = new google.visualization.DataTable();
+    data.addColumn('date', 'Date');
+    data.addColumn('number', 'Tasks Submitted');
+    data.addColumn('number', 'CPU Hours Used');
+//    data.addColumn('number', 'Parallel Jobs Submitted');
+    data.addRows([
+//Style should be like this:    
+//      [new Date(2008, 1 ,1), 30000, undefined, undefined],
+{% for date, value in date_list.items %}
+        [new Date({{date.year}}, {{date.month|add:-1}}, {{date.day}}), {{value.jobs}} , {{value.cpu|floatformat:2}}],
+{% endfor %}
+    ]);
+
+    var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
+    chart.draw(data, {displayAnnotations: true, scaleType:'fixed', scaleColumns:[1,0]});
+  }
+</script>
+
+
+{% endblock %}
+
+
+{% block breadcrumbs_l2 %} <a href="{% url usage_home %}">Usage</a> &gt;&gt; {% block breadcrumbs_l3 %}{%endblock%}{%endblock%}
+
+{% block usagelist %}
+{% endblock %}
+
+{%block body %}
+
+<h2>Usage by user</h2>
+<p>
+<b>Select from the list below, or choose a period using the form </b>
+
+<ul>
+<li><p><a href="{% url usage_by_period_all %}">All time</a></p></li>
+<li><p><a href="{% url usage_by_period year_start today %}">This year</a></p></li>
+<li><p><a href="{% url usage_by_period month_start today %}">This month</a></p></li>
+<li><p><a href="{% url usage_by_period week_start today %}">This week</a></p></li>
+<li><p><a href="{% url usage_by_period today today %}">Today</a></p></li>
+
+</ul>
+
+<form action="" method="post" enctype="multipart/form-data">
+{% csrf_token %}
+<table class="formtable">
+{{ form.as_table }}
+</table>
+<input type="submit" value="Submit">
+</form>
+
+
+<h2>Usage over time</h2>
+<div id="chart_div" style='width: 700px; height: 240px;'></div>
+{%endblock%}
