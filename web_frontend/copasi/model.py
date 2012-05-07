@@ -25,8 +25,8 @@ class CopasiModel:
     def is_valid(self, job_type):
         """Check if the model has been correctly set up for a particular condor-copasi task"""
         #Check the version is correct
-        if not (self.__getVersion() == 33 or self.__getVersion() == 34 or self.__getVersion() == 35):
-            return 'The model must be saved using a supported version of Copasi. The model you submitted appears to have been saved using version ' + str(self.__getVersion())
+        if not (self.__getVersionDevel() == 33 or self.__getVersionDevel() == 34 or self.__getVersionDevel() == 35 or self.__getVersionMajor() >= 2012):
+            return 'The model must be saved using a supported version of Copasi. The model you submitted appears to have been saved using version ' + str(self.__getVersionDevel())
         if job_type == 'SO':
             #Check that a single object has been set for the sensitivities task:
             if self.get_sensitivities_object() == '':
@@ -92,9 +92,18 @@ class CopasiModel:
         return returncode, stdout, stderr
         
    
-    def __getVersion(self):
+    def __getVersionMajor(self):
+        """Get the major version of COPASI used to generate the model"""
+        return int(self.model.getroot().attrib['versionMajor'])
+   
+    def __getVersionMinor(self):
+        """Get the minor version of COPASI used to generate the model"""
+        return int(self.model.getroot().attrib['versionMinor'])
+   
+    def __getVersionDevel(self):
         """Get the version of COPASI used to generate the model"""
         return int(self.model.getroot().attrib['versionDevel'])
+   
    
     def __getTask(self,task_type, model=None):
         """Get the XML tree representing a task with type: 'type'"""
