@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.6
+#!/usr/bin/python2
 
 #Script to process output from stochastic simulation task
 #Assumes that a file called raw_results.txt is in the current working directory

@@ -239,7 +239,9 @@ def run():
             error=False;
             still_running=False
             for condor_job in condor_jobs:
-                if condor_job.queue_status != 'F':
+                logging.debug('Condor job: ' + str(condor_job) + ', status: ' + condor_job.queue_status)
+                still_running_stats = ['N', 'Q', 'R', 'I', 'D', 'U']
+                if condor_job.queue_status in still_running_stats:
                     still_running = True
                     break
                 elif condor_job.queue_status == 'H':
@@ -308,17 +310,38 @@ def run():
                     
                 if job.status == 'X':
                     #If the second stage of condor processing has finished, mark the job as complete
-                    job.status='C'
-                    job.finish_time=datetime.datetime.today()
+                    
+                    #Open the log file and check the exit status for the results job first
+                
                     try:
-                        zip_up_dir(job)
+                        logging.debug('Checking results file')
+                        filename=os.path.join(job.get_path(), 'results.log')
+                        log = condor_log.Log(filename)
+                        assert log.termination_status == 0
+                        #While we're here, update the CondorJob run time
+                        job.run_time += log.running_time_in_days
+                        job.finish_time=datetime.datetime.today()
+                        job.last_update=datetime.datetime.today()
+                        job.status='C'
+                        job.save()
                     except:
-                        logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
-                    job.save()
+                        logging.exception('Condor job (results processing) exited with nonzero return value or could not read run time. Condor Job: ' + str(condor_job.queue_id) + ', Job: ' + str(job.id) + ', User: ' + str(job.user))
+                        job.status = 'E'
+                        job.finish_time=datetime.datetime.today()
+                        job.last_update=datetime.datetime.today()
+                        job.save()
+                    
                     try:
                         email_notify.send_email(job)
                     except:
                         logging.exception('Exception: error sending email')
+
+                    try:
+                        zip_up_dir(job)
+                    except:
+                        logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                    
+                    
                 elif job.status != 'E':
                     #Otherwise mark it as waiting for local processing
                     job.status = 'W'
