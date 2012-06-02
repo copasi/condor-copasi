@@ -6,7 +6,7 @@ xmlns = '{http://www.copasi.org/static/schema}'
 
 def get_time_per_job(job):
     #For benchmarking purposes, jobs with a name ending with ?t=0.5 will use the custom t for load balancing
-    name_re = re.compile(r'.*\?t=(?P<t>.*)')
+    name_re = re.compile(r'.*t=(?P<t>.*)')
     name_match = name_re.match(job.name)
     if name_match:
         return float(name_match.group('t'))
