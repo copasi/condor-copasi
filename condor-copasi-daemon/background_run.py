@@ -86,7 +86,7 @@ def run():
         logging.debug('New job found: ' + str(job.id) + ', user: ' + str(job.user))
         try:
             #Load the model
-            model = CopasiModel(job.get_filename())
+            model = CopasiModel(job.get_filename(), job=job)
             #Prepare the .job files
             #Check the job rank. If it's been set, use it. Otherwise set to 0
             if job.rank != None or job.rank != '':

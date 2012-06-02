@@ -4,12 +4,19 @@ from lxml import etree
 from string import Template
 xmlns = '{http://www.copasi.org/static/schema}'
 
-
-
+def get_time_per_job(job):
+    #For benchmarking purposes, jobs with a name ending with ?t=0.5 will use the custom t for load balancing
+    name_re = re.compile(r'.*\?t=(?P<t>.*)')
+    name_match = name_re.match(job.name)
+    if name_match:
+        return float(name_match.group('t'))
+    else:
+        return settings.IDEAL_JOB_TIME
+	
 
 class CopasiModel:
     """Class representing a Copasi model"""
-    def __init__(self, filename, binary=settings.COPASI_LOCAL_BINARY, binary_dir=settings.COPASI_BINARY_DIR):
+    def __init__(self, filename, binary=settings.COPASI_LOCAL_BINARY, binary_dir=settings.COPASI_BINARY_DIR, job=None):
         #Load the copasi binary
         self.model = etree.parse(filename)
         self.binary = binary
@@ -17,6 +24,7 @@ class CopasiModel:
         self.name = filename
         (head, tail) = os.path.split(filename)
         self.path = head
+        self.job=job
     def __unicode__(self):
         return self.name
     def __string__(self):
@@ -759,7 +767,8 @@ class CopasiModel:
             #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds) (or whatever the settings parameter is set to)
             #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
             
-            time_per_job = settings.IDEAL_JOB_TIME * 60
+            #time_per_job = settings.IDEAL_JOB_TIME * 60
+            time_per_job = get_time_per_job(self.job) * 60
             
             #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
             repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), runs)
@@ -1113,7 +1122,8 @@ class CopasiModel:
             #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
             #time_per_job = no_of_steps * time_per_step => no_of_steps = time_per_job/time_per_step
             
-            time_per_job = settings.IDEAL_JOB_TIME * 60
+            #time_per_job = settings.IDEAL_JOB_TIME * 60
+            time_per_job = get_time_per_job(self.job) * 60
             
             #Calculate the number of steps for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
             no_of_steps_per_job = min(int(round(float(time_per_job) / time_per_step)), no_of_steps)
