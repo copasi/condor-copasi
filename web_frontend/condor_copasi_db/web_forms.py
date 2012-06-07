@@ -208,7 +208,7 @@ class PlotUpdateForm(forms.Form):
     grid = forms.BooleanField(label='Show grid', required=False, initial=True)
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
-
+    fontsize = forms.IntegerField(label='Font size', required=False, initial='12')
 #form to update the SO progress plots
 class SOPlotUpdateForm(forms.Form):
     """Form containing controls to update plots"""
@@ -226,6 +226,7 @@ class SOPlotUpdateForm(forms.Form):
     grid = forms.BooleanField(label='Show grid', required=False, initial=True)
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
+    fontsize = forms.IntegerField(label='Font size', required=False, initial='12')
     
 class ChangePasswordForm(forms.Form):
     """Form for allowing a user to change their password. Checks that the old password is valid, and the new passwords match"""

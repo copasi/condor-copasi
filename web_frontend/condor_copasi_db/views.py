@@ -696,12 +696,14 @@ def jobOutput(request, job_name):
             stdev = form.cleaned_data['stdev']
             legend = form.cleaned_data['legend']
             grid = form.cleaned_data['grid']
+            fontsize = form.cleaned_data['fontsize']
         else:
             variables=range(len(variable_choices))
             log=False
             stdev = True
             legend=True
             grid=True
+            fontsize='12'
             
         #construct the string to load the image file
         img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
@@ -713,6 +715,8 @@ def jobOutput(request, job_name):
             img_string += '&legend=true'
         if grid:
             img_string += '&grid=true'
+        if fontsize:
+            img_string += '&fontsize=' + fontsize
     
     elif job.job_type == 'OR':
         try:
@@ -840,6 +844,7 @@ def ss_plot(request, job_name):
         stdev=request.GET.get('stdev', 'false')
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
+        fontsize = int(request.GET('fontsize', '12'))
         
         #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
@@ -851,9 +856,9 @@ def ss_plot(request, job_name):
         except:
             variables = range((len(results) - 1)/2)
         
-        matplotlib.rc('font', size=8)
+        matplotlib.rc('font', size=fontsize)
         fig = plt.figure()
-        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
+        #plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
         plt.xlabel('Time')
         
         color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']
@@ -883,7 +888,7 @@ def ss_plot(request, job_name):
         if log != 'false':
             plt.yscale('log')
         if legend != 'false':
-            plt.legend(loc=0, )
+            plt.legend(loc=0, prop={'size':fontsize} )
         if grid != 'false':
             plt.grid(True)
             
@@ -938,6 +943,7 @@ def so_progress_plot(request, job_name):
 
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
+        fontsize = int(request.GET.get('fontsize', '12'))
         
         #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
@@ -950,7 +956,7 @@ def so_progress_plot(request, job_name):
             raise
             variables = range(len(variable_choices))
         
-        matplotlib.rc('font', size=8)
+        matplotlib.rc('font', size=fontsize)
         fig = plt.figure()
 #        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
         plt.xlabel('Iterations')
@@ -995,7 +1001,7 @@ def so_progress_plot(request, job_name):
         if log != 'false':
             plt.yscale('log')
         if legend != 'false':
-            plt.legend(loc=0, )
+            plt.legend(loc=0, prop={'size':fontsize} )
         if grid != 'false':
             plt.grid(True)
             
