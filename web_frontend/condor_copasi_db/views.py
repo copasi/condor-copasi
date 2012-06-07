@@ -844,7 +844,7 @@ def ss_plot(request, job_name):
         stdev=request.GET.get('stdev', 'false')
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
-        fontsize = int(request.GET('fontsize', '12'))
+        fontsize = int(request.GET.get('fontsize', '12'))
         
         #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
