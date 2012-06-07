@@ -841,10 +841,10 @@ def ss_plot(request, job_name):
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
         
-        #Check to see if we should return as an attachment in .png or .svg or .eps
+        #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
         download_svg = 'download_svg' in request.POST
-        download_eps = 'download_eps' in request.POST
+        download_pdf = 'download_pdf' in request.POST
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < ((len(results)-1)/2)
@@ -895,10 +895,10 @@ def ss_plot(request, job_name):
             response = HttpResponse(mimetype='image/svg', content_type='image/svg')
             fig.savefig(response, format='svg', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
-        elif download_eps:
-            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
-            fig.savefig(response, format='eps', transparent=False, dpi=120)
-            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        elif download_pdf:
+            response = HttpResponse(mimetype='application/pdf', content_type='application/pdf')
+            fig.savefig(response, format='pdf', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.pdf'
         else:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
             fig.savefig(response, format='png', transparent=False, dpi=120)
@@ -939,10 +939,10 @@ def so_progress_plot(request, job_name):
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
         
-        #Check to see if we should return as an attachment in .png or .svg or .eps
+        #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
         download_svg = 'download_svg' in request.POST
-        download_eps = 'download_eps' in request.POST
+        download_pdf = 'download_pdf' in request.POST
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < len(variable_choices)
@@ -1011,10 +1011,10 @@ def so_progress_plot(request, job_name):
             response = HttpResponse(mimetype='image/svg', content_type='image/svg')
             fig.savefig(response, format='svg', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
-        elif download_eps:
-            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
-            fig.savefig(response, format='eps', transparent=False, dpi=120)
-            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        elif download_pdf:
+            response = HttpResponse(mimetype='application/pdf', content_type='application/pdf')
+            fig.savefig(response, format='pdf', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.pdf'
         else:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
             fig.savefig(response, format='png', transparent=False, dpi=120)
