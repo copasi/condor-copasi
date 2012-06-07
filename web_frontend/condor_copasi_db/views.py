@@ -716,7 +716,7 @@ def jobOutput(request, job_name):
         if grid:
             img_string += '&grid=true'
         if fontsize:
-            img_string += '&fontsize=' + fontsize
+            img_string += '&fontsize=' + str(fontsize)
     
     elif job.job_type == 'OR':
         try:
@@ -1073,11 +1073,13 @@ def so_progress_page(request, job_name):
         log = form.cleaned_data['logarithmic']
         legend = form.cleaned_data['legend']
         grid = form.cleaned_data['grid']
+        fontsize = form.cleaned_data['fontsize']
     else:
         variables=range(len(variable_choices))
         log=False
         legend=False
         grid=True
+        fontsize = '12'
         
     #construct the string to load the image file
     img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
@@ -1087,6 +1089,8 @@ def so_progress_page(request, job_name):
         img_string += '&legend=true'
     if grid:
         img_string += '&grid=true'
+    if fontsize:
+        img_string += '&fontsize=' + str(fontsize)
     
     pageTitle = 'Optimization Progress: ' + str(job.name)
     return render_to_response('my_account/so_progress_plot.html', locals(), RequestContext(request))
