@@ -34,7 +34,7 @@
 {% csrf_token %}
 <input type="submit" name="download_png" value="Download in .PNG Format">
 <input type="submit" name="download_svg" value="Download in .SVG Format">
-<input type="submit" name="download_pdf" value="Download in .PDF Format">
+<input type="submit" name="download_eps" value="Download in .EPS Format">
 </form>
 </div>
 
@@ -74,6 +74,23 @@
         {% endfor %}
     </table>
 </div>
+
+
+{% endif %}
+{% if job.job_type == 'SP'%}
+<div class = "review">
+    <p><h3>Mean of parameters from parameter estimation tasks: <b>{{mean_value}}</b></h3></p>
+    <table>
+        <tr><th>Parameter</th><th>Value</th></tr>
+        {% for parameter in parameters %}
+        <tr>
+            <td><b>{{parameter.0}}</b></td>
+            <td>{{parameter.1}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
 
 {% endif %}
 {% if job.job_type == 'OD' %}

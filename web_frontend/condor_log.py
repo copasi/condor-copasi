@@ -42,7 +42,7 @@ class Log:
         
         if not self.has_terminated:
             return
-                    
+
         try:
             for line in open(path, 'r'):
                 if execution_re.match(line):

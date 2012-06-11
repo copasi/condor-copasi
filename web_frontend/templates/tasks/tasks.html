@@ -11,6 +11,7 @@
     <li><a href="{% url new_PR %}">Parameter Estimation Repeat</a></li>
     <li><a href="{% url new_RW %}">Raw Mode</a></li>
     <li><a href="{% url new_OD %}">Optimization Repeat (Different Algorithms)</a></li>
+    <li><a href="{% url new_SP %}">Sigma Point Method</a></li>
 </ul>
 {% endblock %}
 
@@ -36,10 +37,11 @@ Similar to the optimization repeat task above, this feature runs the parameter e
 <h4>Raw Mode</h4>
 Raw mode allows you to prepare a COPASI model file to run exactly as you want. One or more tasks should be marked as executable, with a report type and output filename specified. Condor-COPASI can run multiple repeats of the executable task(s) in parallel, with one repeat performed per parallel job. The report output filenames will be appended with the zero-indexed repeat number.
 
-
-<h4>Optimization Repeat with Different Alogorithms</h4>
+<h4>Optimization Repeat with Different Algorithms</h4>
 This feature runs the optimization task using different algorithms. Each algorithm runs a separate parallel job. Condor-COPASI will automatically determine which algorithm(s) found the best result.
 
+<h4>Sigma Point Method</h4>
+This task generates a number of new data sets by simulating noise, then runs parameter estimation tasks for each new set.  The mean, covariance, and coefficients of variation of the parameters of the system are then calculated, providing a measure for the accuracy of their values.
 
 
 {%endblock%}

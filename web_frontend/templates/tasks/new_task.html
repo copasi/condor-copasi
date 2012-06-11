@@ -56,7 +56,10 @@ function selectall(select){
 {% if type == "OD" %}
 <a href="{% url new_OD %}">Optimization Repeat with Different Algorithms</a>
 {% endif %}
-{% if type == "OD" %}
+{% if type == "SP" %}
+<a href="{% url new_SP %}">Sigma Point Method</a>
+{% endif %}
+{% if type == "RW" %}
 <a href="{% url new_RW %}">Raw Mode</a>
 {% endif %}
 &gt;&gt; {%block breadcrumbs_l4%}{%endblock%}{%endblock%}
@@ -134,6 +137,20 @@ function selectall(select){
         </ul>
     </ul>
     Condor-COPASI will automatically generate an appropriate report; no report needs to be set for the Optimization task.
+    {% endif %}
+
+    {% if type == 'SP' %}
+    <ul class="job_details">
+        <li><b>Sigma Point Method</b></li>
+        <ul>
+        <li>At least one variable parameter must have been added to the Parameter Estimation task in the .CPS file</li>
+        <li>Any experimental data files must have been selected and configured</li>
+        <li>Note, all experimental data files must be placed in the same directory as the model <tt>.CPS</tt> file prior to setting up the Sigma Point Method</li>
+        <li>Any experimental data files must have been selected and configured as a <tt>.TXT</tt> or <tt>.DAT</tt> with one line as a header.</li>
+        <li>For systems with many parameters, the default values for the scaling factors are recommended.  For more information, see 'Optimal Experimental Design with the Sigma Point Method' [Schenkendorf 2009].</li>
+        </ul>
+    </ul>
+    Condor-COPASI will automatically generate an appropriate report; no report needs to be set for the sigma point method.
     {% endif %}
     
     {% if type == 'RW' %}

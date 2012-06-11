@@ -111,9 +111,16 @@ def run():
             elif job.job_type == 'PR':
                 no_of_jobs = model.prepare_pr_jobs(job.runs, skip_load_balancing=job.skip_load_balancing, custom_report=job.custom_report)
                 condor_jobs = model.prepare_pr_condor_jobs(no_of_jobs, rank=rank)
+				
+            elif job.job_type == 'SP':
+            ##ALTER
+                no_of_jobs = model.prepare_sp_jobs(job.runs, skip_load_balancing = job.skip_load_balancing, custom_report=False)
+                condor_jobs = model.prepare_sp_condor_jobs(no_of_jobs, rank=rank)
+				
             elif job.job_type == 'OD':
                 #No need to prepare the job. This was done as the job was submitted
                 condor_jobs = model.prepare_od_condor_jobs(rank=rank)
+                
             elif job.job_type == 'RW':
                 no_of_jobs = model.prepare_rw_jobs(job.runs)
                 condor_jobs = model.prepare_rw_condor_jobs(no_of_jobs, job.raw_mode_args, rank=rank)
@@ -329,8 +336,7 @@ def run():
                         job.status = 'E'
                         job.finish_time=datetime.datetime.today()
                         job.last_update=datetime.datetime.today()
-                        job.save()
-                    
+                    job.save()
                     try:
                         email_notify.send_email(job)
                     except:
@@ -396,7 +402,7 @@ def run():
                 condor_job = models.CondorJob(parent=job, spec_file=cj['spec_file'], std_output_file=cj['std_output_file'], std_error_file = cj['std_error_file'], log_file=cj['log_file'], job_output=cj['job_output'], queue_status='Q', queue_id=condor_job_id)
                 condor_job.save()
                 job.status='X' # Set the job status as processing on condor
-                
+
                 #Update the condor job count
                 if job.condor_jobs == None:
                     job.condor_jobs = 1
@@ -409,7 +415,7 @@ def run():
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
-
+                
             elif job.job_type == 'PS':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
@@ -427,13 +433,30 @@ def run():
                     email_notify.send_email(job)
                 except:
                     logging.exception('Exception: error sending email')
-                    
-                    
             elif job.job_type == 'OR':
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 no_of_jobs = len(condor_jobs)
                 #TODO: Do we need to collate any output files?
                 model.process_or_results(no_of_jobs)
+                job.status = 'C'
+                job.last_update = datetime.datetime.today()
+                job.finish_time = datetime.datetime.today()
+
+                try:
+                    zip_up_dir(job)
+                except:
+                    logging.exception('Exception: could not zip up job directory for job ' + str(job.id))
+                job.save()
+                try:
+                    email_notify.send_email(job)
+                except:
+                    logging.exception('Exception: error sending email')
+                    
+            #ALTER
+            elif job.job_type == 'SP':
+                condor_jobs = models.CondorJob.objects.filter(parent=job)
+                no_of_jobs = len(condor_jobs)
+                model.process_sp_results(no_of_jobs, custom_report=job.custom_report)
                 job.status = 'C'
                 job.last_update = datetime.datetime.today()
                 job.finish_time = datetime.datetime.today()
@@ -556,12 +579,12 @@ def run():
             except:
                 pass
 
-    
+
     if updated_legacy_jobs:
         legacy_jobs = models.Job.objects.filter(status='C').filter(run_time=None)
         for job in legacy_jobs:
             try:
-                
+        
                 condor_jobs = models.CondorJob.objects.filter(parent=job)
                 #keep a tally of total run time
                 total_run_time = 0.0

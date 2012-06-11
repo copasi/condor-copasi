@@ -87,6 +87,11 @@ class CopasiModel:
             if len(self.get_parameter_estimation_parameters()) == 0:
                 return 'No parameters have been set for the sensitivites task'
             return True
+        elif job_type == 'SP':
+            #Check that at least one parameter has been set
+            if len(self.get_parameter_estimation_parameters()) == 0:
+                return 'No parameters have been set for the parameter estimation task'
+            return True
         else:
             return True
         
@@ -94,7 +99,7 @@ class CopasiModel:
         """Private function to run Copasi locally in a temporary folder."""
         import process
         if not save:
-            returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, filename], cwd=tempdir, timeout=timeout)
+        returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, filename], cwd=tempdir, timeout=timeout)
         else:
             returncode, stdout, stderr = process.run([self.binary, '--nologo',  '--home', tempdir, '--save', filename, filename], cwd=tempdir, timeout=timeout)
         return returncode, stdout, stderr
@@ -111,7 +116,6 @@ class CopasiModel:
     def __getVersionDevel(self):
         """Get the version of COPASI used to generate the model"""
         return int(self.model.getroot().attrib['versionDevel'])
-   
    
     def __getTask(self,task_type, model=None):
         """Get the XML tree representing a task with type: 'type'"""
@@ -499,10 +503,27 @@ class CopasiModel:
             
                         
             
-        
+        elif report_type == 'SP':
+            #Use the following xml string as a template
+            report_string = Template(
+            """<Report xmlns="http://www.copasi.org/static/schema" key="${report_key}" name="${report_name}" taskType="parameterFitting" separator="&#x09;" precision="6">
+<Comment>
+        Condor Copasi automatically generated report.
+      </Comment>
+      <Table printTitle="1">
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Best Parameters"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Best Value"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Timer=CPU Time"/>
+        <Object cn="CN=Root,Vector=TaskList[Parameter Estimation],Problem=Parameter Estimation,Reference=Function Evaluations"/>
+      </Table>
+    </Report>"""
+            ).substitute(report_key=report_key, report_name=report_name)
+            report = etree.XML(report_string)
+            
+            listOfReports.append(report)        
         else:
             raise Exception('Unknown report type')
-        
+            
     def prepare_so_task(self):
         """Generate the files required to perform the sensitivity optimization, 
         
@@ -1452,15 +1473,15 @@ class CopasiModel:
             if line != '\n':
                 if output_re.match(line):
                     value = float(output_re.match(line).groupdict()['best_value'])
-                    if best_value != None and maximize:
+                if best_value != None and maximize:
                         if value > best_value:
                             best_value = value
                             best_line = line
-                    elif best_value != None and not maximize:
+                elif best_value != None and not maximize:
                         if value < best_value:
                             best_value = value
                             best_line = line
-                    elif best_value == None:
+                elif best_value == None:
                         best_value = value
                         best_line = line
             else:
@@ -1475,11 +1496,11 @@ class CopasiModel:
                     if line != '\n':
                         if output_re.match(line):
                             value = float(output_re.match(line).groupdict()['best_value'])
-                            if maximize:
+                        if maximize:
                                 if value > best_value:
                                     best_value = value
                                     best_line = line
-                            elif not maximize:
+                        elif not maximize:
                                 if value < best_value:
                                     best_value = value
                                     best_line = line
@@ -1757,11 +1778,11 @@ class CopasiModel:
                 if line != '\n':
                     if output_re.match(line):
                         current_value = float(output_re.match(line).groupdict()['best_value'])
-                        if best_value != None:
+                    if best_value != None:
                             if current_value < best_value:
                                 best_value = current_value
                                 best_line = line
-                        elif best_value == None:
+                    elif best_value == None:
                             best_value = current_value
                             best_line = line
                 else:
@@ -1807,7 +1828,7 @@ class CopasiModel:
             output_file.write(parameter[0].encode('utf8'))
             output_file.write('\t')
         output_file.write('\n')
-        
+
         best_line_dict = output_re.match(best_line).groupdict()
 
         output_file.write(best_line_dict['best_value'])
@@ -1833,6 +1854,7 @@ class CopasiModel:
         
         for i in range(len(headers)):
             output.append((headers[i], values[i]))
+
 
         return output
         
@@ -2498,7 +2520,6 @@ class CopasiModel:
             output.append(line.rstrip('\n').rstrip('\t').split('\t'))
         return output
         
-        
     def prepare_rw_jobs(self, repeats):
         """Prepare the jobs for the new raw mode.
          
@@ -2587,4 +2608,522 @@ class CopasiModel:
             })
 
         return condor_jobs
+    
+    def prepare_sp_jobs(self, no_of_jobs, skip_load_balancing=False, custom_report=False):
+        """Prepare jobs for the sigma point method"""
+        import shutil
+        i=0
+        
+        #ALTER -- Bring back skip_load_balancing?  
+        
+        
+        #Benchmarking.
+        #As per usual, first calculate how long a single parameter fit will take
+        
+        self.__clear_tasks()                #Program stops here.
+        
+        
+        fitTask = self.__getTask('parameterFitting')
+        fitTask.attrib['scheduled'] = 'true'
+        fitTask.attrib['updateModel'] = 'false'
+        
+        #Even though we're not interested in the output at the moment, we have to set a report for the parameter fitting task, or Copasi will complain!
+        #Only do this if custom_report is false
+        #if not custom_report:
+        #Create a new report for the or task
+        report_key = 'condor_copasi_parameter_fitting_repeat_report'
+        self.__create_report('SP', report_key, 'auto_pr_report')
+            
+        #And set the new report for the or task
+        fitReport = fitTask.find(xmlns + 'Report')
+        #if custom_report:
+        #    custom_report_key = fitReport.attrib['reference']
+    
+    
+        #If no report has yet been set, report == None. Therefore, create new report
+        if fitReport == None:
+            fitReport = etree.Element(xmlns + 'Report')
+            fitTask.insert(0,fitReport)
+        
+        
+        #if not custom_report:
+        fitReport.set('reference', report_key)
+    
+        fitReport.set('append', '1')
+        fitReport.set('target', 'copasi_temp_output.txt')     
+        
+        '''
+        if not skip_load_balancing:
+            import tempfile
+            tempdir = tempfile.mkdtemp()
+            
+            temp_filename = os.path.join(tempdir, 'auto_copasi_temp.cps')
+            
+            #Copy the data file(s) over to the temp dir
+            import shutil
+            for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'),'r'):
+                data_file = data_file_line.rstrip('\n')
+                shutil.copy(os.path.join(self.path, data_file), os.path.join(tempdir, data_file))
+            
+            #Write a temp XML file
+            self.model.write(temp_filename)
+            
+            #Note the start time
+            start_time = time.time()
+            self.__copasiExecute(temp_filename, tempdir, timeout=int(settings.IDEAL_JOB_TIME*60))
+            finish_time = time.time()
+            time_per_step = finish_time - start_time
+            
+            #Remove the temp directory tree
+            shutil.rmtree(tempdir)
+
+            
+            #We want to split the scan task up into subtasks of time ~= 10 mins (600 seconds)
+            #time_per_job = repeats_per_job * time_per_step => repeats_per_job = time_per_job/time_per_step
+            
+            time_per_job = settings.IDEAL_JOB_TIME * 60
+            
+            #Calculate the number of repeats for each job. If this has been calculated as more than the total number of steps originally specified, use this value instead
+            repeats_per_job = min(int(round(float(time_per_job) / time_per_step)), repeats)
+
+        else:
+            repeats_per_job = 1
+        #no_of_jobs = int(math.ceil(float(repeats) / repeats_per_job))
+        '''
+        ############
+        #Job preparation
+        ############
+        
+        self.__clear_tasks()    #This also stops the program.
+        
+        
+        fitReport.attrib['target'] = ''
+        # Hack - Copasi does not update parameters if only update model set in scan, so we have to set it also in parameterFitting task
+        #Get the parameter estimation task
+        fitTask = self.__getTask('parameterFitting')
+
+
+        fitTask.attrib['updateModel'] = 'false'
+        #Get the scan task
+        scanTask = self.__getTask('scan')
+        
+        
+        scanTask.attrib['scheduled'] = 'true'
+        scanTask.attrib['updateModel'] = 'false'
+
+        #Set the new report for the scan task
+        report = scanTask.find(xmlns + 'Report')
+        
+        #If no report has yet been set, report == None. Therefore, create new report
+        if report == None:
+            report = etree.Element(xmlns + 'Report')
+            scanTask.insert(0,report)
+        
+        
+        if custom_report:
+            report.set('reference', custom_report_key)
+            
+        else:
+            report.set('reference', report_key)
+            report.set('append', '1')
+        
+        #Prepare the scan task
+        #Open the scan problem, and clear any subelements
+        scan_problem = scanTask.find(xmlns + 'Problem')
+        scan_problem.clear()
+        
+        
+        #Add a subtask parameter (value 5 for parameter estimation)
+        subtask_parameter = etree.SubElement(scan_problem, xmlns + 'Parameter')
+        subtask_parameter.attrib['name'] = 'Subtask'
+        subtask_parameter.attrib['type'] = 'unsignedInteger'
+        subtask_parameter.attrib['value'] = '5'
+        
+        
+        #Add a single ScanItem for the repeats
+        subtask_pg = etree.SubElement(scan_problem, xmlns + 'ParameterGroup')
+        subtask_pg.attrib['name'] = 'ScanItems'
+        subtask_pg_pg = etree.SubElement(subtask_pg, xmlns + 'ParameterGroup')
+        subtask_pg_pg.attrib['name'] = 'ScanItem'
+        p1 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p1.attrib['name'] = 'Number of steps'
+        p1.attrib['type'] = 'unsignedInteger'
+        p1.attrib['value'] = '0'# Assign this later
+
+        
+        p2 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p2.attrib['name'] = 'Type'
+        p2.attrib['type'] = 'unsignedInteger'
+        p2.attrib['value'] = '0'
+        
+        p3 = etree.SubElement(subtask_pg_pg, xmlns+'Parameter')
+        p3.attrib['name'] = 'Object'
+        p3.attrib['type'] = 'cn'
+        p3.attrib['value'] = ''
+        
+        p4 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p4.attrib['name'] = 'Output in subtask'
+        p4.attrib['type'] = 'bool'
+        p4.attrib['value'] = '1'
+        
+        p5 = etree.SubElement(scan_problem, xmlns+'Parameter')
+        p5.attrib['name'] = 'Adjust initial conditions'
+        p5.attrib['type'] = 'bool'
+        p5.attrib['value'] = '0'
+        
+                
+        ############
+        #Prepare the Copasi files
+        ############
+        
+        repeat_count = 0
+        
+        for j in range(no_of_jobs):
+            '''if repeats_per_job + repeat_count > repeats:
+                no_of_repeats = repeats - repeat_count
+            else:
+                no_of_repeats = repeats_per_job
+            repeat_count += no_of_repeats
+            '''
+            #Set the number of repeats for the scan task
+            #ALTER think this should be 1.
+            p1.attrib['value'] = str(1)
+            #And the report target output
+            report.attrib['target'] = str(j) + '_out.txt'
+            
+            filename = os.path.join(self.path, str(j), 'auto_copasi_' + str(j) +'.cps')
+            self.model.write(filename)
+                    
+        return no_of_jobs
+        
+        
+    def prepare_sp_condor_jobs(self, jobs, rank='0'):
+        """Prepare the condor jobs for the parallel scan task"""
+        ############
+        #Build the appropriate .job files for the sensitivity optimization task, write them to disk, and make a note of their locations
+        condor_jobs = []
+        
+        #Build up a string containing a comma-separated list of data files
+        files_string = ','
+        for data_file_line in open(os.path.join(self.path, 'data_files_list.txt'), 'r'):
+            data_file = data_file_line.rstrip('\n')
+            files_string += data_file + ','
+        
+
+        files_string = files_string.rstrip(',')
+
+        
+        for i in range(jobs):
+            copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
+            #In addition to the copasi file, also transmit the data files. These are listed in files_string
+            condor_job_string = Template(raw_condor_job_string).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string)            
+            condor_job_filename = os.path.join(self.path, str(i), Template('auto_condor_$index.job').substitute(index=i))
+            condor_file = open(condor_job_filename, 'w')
+            condor_file.write(condor_job_string)
+            condor_file.close()
+            #Append a dict contining (job_filename, std_out, std_err, log_file, job_output)
+            condor_jobs.append({
+                'spec_file': condor_job_filename,
+                'std_output_file': str(copasi_file) + '.out',
+                'std_error_file': str(copasi_file) + '.err',
+                'log_file': str(copasi_file) + '.log',
+                'job_output': str(i) + '_out.txt'
+            })
+            
+            
+
+        return condor_jobs
+        
+    def process_sp_results(self, jobs, custom_report=False):
+        """Calculates the mean, covariance, and coefficients of variation for the parameters from the results of the parameter estimation tasks.  Prints these results to three files.  All equations numbers reference "Optimal experimental design with the sigma point method" (2009) by Schenkendorf, et. al."""
+        
+        ##ALTER --- figure out how to remove the commented lines without indentation errors...
+        #    it looks like we also don't have permission to delete the auto_copasi files, which really balloons memory demand.
+        
+        
+        #Keep track of the last read line before a newline; this will be the best value from an optimization run
+        last_line = ''
+        #Match a string of the format (	0.0995749	0.101685	0.108192	0.091224	)	0.091224	0   100
+        #Contains parameter values, the best optimization value, the cpu time, and some other values, e.g. particle numbers that Copasi likes to add. These could be removed, but they seem useful.
+        output_string = r'.*\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
+        output_re = re.compile(output_string)
+        
+        best_value = None
+        best_line = None
+        
+        #Copy the contents of the first file to results.txt
+        for j in range(jobs):
+            for line in open(os.path.join(self.path, str(j), str(j)+'_out.txt'), 'r'):  
+                try:
+                    if line == '\n':
+                        last_value = output_re.match(last_line).groupdict()['best_value']
+                        if best_value != None:
+                            if last_value < best_value:
+                                best_value = last_value
+                                best_line = last_line
+                        elif best_value == None:
+                            best_value = last_value
+                            best_line = last_line
+                    else:
+                        last_line = line
+                except:
+                    if custom_report:
+                        t=0#pass ALTER
+                    else:
+                        t=0#raise
+                   
+            #And for all other files, copy everything but the last line
+            '''for i in range(jobs)[1:]:
+                firstLine = True
+                for line in open(os.path.join(self.path, str(i), str(i) + '_out.txt'), 'r'):
+                    if not firstLine:
+                        output_file.write(line)
+                        try:
+                            if line == '\n':
+                                last_value = output_re.match(last_line).groupdict()['best_value']
+                                if last_value < best_value:
+                                    best_value = last_value
+                                    best_line = last_line
+                            else:
+                                last_line = last_line
+                        except:
+                            if custom_report:
+                                pass
+                            else:
+                                raise
+                    firstLine = False'''                    
+                    
+            
+            #Write the best value to results.txt
+            output_file = open(os.path.join(self.path, str(j), str(j)+'_results.txt'), 'w')
+            
+            output_file.write('Best value\tCPU time\tFunction evals\t')
+            
+            for parameter in self.get_parameter_estimation_parameters():
+
+                output_file.write(parameter[0])
+                output_file.write('\t')
+            output_file.write('\n')
+
+            best_line_dict = output_re.match(best_line).groupdict()
+
+            output_file.write(best_line_dict['best_value'])
+            output_file.write('\t')
+            output_file.write(best_line_dict['cpu_time'])
+            output_file.write('\t')
+            output_file.write(best_line_dict['function_evals'])
+            output_file.write('\t')
+            
+            for parameter in best_line_dict['params'].split('\t'):
+                output_file.write(parameter)
+                output_file.write('\t')
+            output_file.close()
+        
+        ####
+        
+      
+        
+        i = 0
+        dir = os.path.join(self.path, '')
+        parameters = self.get_parameter_estimation_parameters()
+        number_of_parameters = len(parameters)    
+        storage = [[0]*number_of_parameters for x in xrange(jobs)]
+   
+        
+        with open(os.path.join(dir, 'ScalingFactors.txt')) as scaling_factors_list:
+            factor_array = scaling_factors_list.read().split('\n')
+            scaling_factors_list.close()
+        
+        alpha = float(factor_array[0])
+        beta = float(factor_array[1])
+        kappa = float(factor_array[2])
+        measurement_error = float(factor_array[3])
+        data_points = float(factor_array[4])
+        
+        scaling_factors_list.close()
+        
+        lambd=alpha*alpha*(data_points+kappa)-data_points
+        lambdterm=math.sqrt(data_points+lambd)
+        
+        m_weight_0 = lambd/(data_points+lambd)					        	#0th mean weight in (30)
+        c_weight_0 = lambd/(data_points+lambd)+1-(alpha*alpha)+beta	        #0th covariance weight in (31)
+        i_weight = (1/(2*(data_points+lambd)))                              #ith weight in (32)
+       
+       
+        #Stores the results from all parameter estimation tasks in a 2D array
+        for k in range(jobs):
+            
+            number=0
+            with open(os.path.join(dir, str(k), str(k)+'_results.txt')) as data_list:
+                raw_data  = data_list.read().rstrip('\t').split('\t')
+                
+                #Skips the header (number_of_parameters + 3) and the values for 'Best value', 'CPU time,' 'Function evaluations' (3). 
+                start = number_of_parameters + 6            
+                for value in raw_data[(start):]:
+                    
+                    storage[i][number] = float(value)
+                    number=number+1
+            
+                
+            i = i+1
+            data_list.close()
+            
+
+
+        #Calculates the mean vector in (28) and the covariance matrix cov in (29)
+        mean = [0] * number_of_parameters
+        covariance = [[0]*number_of_parameters for x in xrange(number_of_parameters)]
+
+        if kappa > 0:                   #Excludes the initial data set stored in the jobs-1 directory
+            #Mean           
+            for j in range(number_of_parameters):
+                sum =0
+                for l in range(jobs)[:-1]:                         
+                    sum = sum + storage[l][j]
+                mean[j]=sum*i_weight
+                sum = sum + m_weight_0*storage[jobs-1][j]
+                
+            #Covariance    
+            for p in range(0, number_of_parameters):
+                for m in range(0, number_of_parameters):
+                    sum = 0
+                    for q in range(jobs)[:-1]:
+                        sum = sum + (iweight * (storage[q][p] - mean[p]) * (storage[q][m] - mean[m]))
+                    sum = sum + (c_weight_0 * (storage[jobs-1][p] - mean[p]) * (storage[jobs-1][m] - mean[m]))
+                    covariance[p][m] = sum                    
+                
+
+        else:
+            #Mean
+            for j in range(number_of_parameters):
+                sum = 0
+                for l in range(jobs):
+                    sum = sum + storage[l][j]
+                mean[j]=sum*i_weight
+            
+            
+            #Covariance              
+            for p in range(number_of_parameters):
+                for m in range(number_of_parameters):
+                    sum = 0
+                    for q in range(jobs):
+                        sum = sum + (i_weight * (storage[q][p] - mean[p]) * (storage[q][m] - mean[m]))
+                    covariance[p][m] = sum
+                
+        
+        
+        #Calculates the coefficients of variation.
+        coefficient_of_variation = [0] * number_of_parameters
+        for i in range(number_of_parameters):
+            coefficient_of_variation[i] = (math.sqrt(covariance[i][i]))/(abs(mean[i]+0.0))
+            #Since the noisy data is truncated at values less than 0, we get negative values for the mean.  This problem may also involve the scaling factors..
+        
+       
+        
+        #Calculates the bias.
+        bias = [0] * number_of_parameters
+        for i in range(number_of_parameters):
+            bias[i] = mean[i] - storage[jobs-1][i]
+        
+        #Print the values of each vector to its respective file:
+                
+        
+        mean_string = ''
+        coefficient_string = ''
+        covariance_string =''
+        bias_string=''
+        head_string =''
+        
+        
+        
+        #Adds the horizontal headers
+        for parameter in parameters:
+            head_string = head_string + str(parameter[0]) + '\t'
+        head_string.rstrip('\t')
+            
+          
+            
+        mean_string = head_string+'\n'
+        coefficient_string = head_string +'\n'
+        covariance_string = '\t'+ head_string + '\n'
+        bias_string = head_string + '\n'
+        
+        #Diagnostic - prints the storage matrix to all_tasks.txt
+        with open(os.path.join(dir, 'all_tasks.txt'),'w') as storage_text:
+            storage_text.write(head_string+'\n')
+            for i in storage:
+                for element in i:
+                    storage_text.write(str(element)+'\t')
+                storage_text.write('\n')
+        storage_text.close()
+        
+
+        
+        #Adds the values to mean
+        for i in mean:
+            mean_string = mean_string + str(i) + '\t'
+        mean_string = mean_string.rstrip('\t')
+        
+        
+        #Adds the vertical header and the values to the covariance matrix.
+        index = 0
+        for i in covariance:
+            covariance_string = covariance_string + str(parameters[index][0])+'\t'
+            index = index+1
+            for j in i:
+                covariance_string = covariance_string + str(j) + '\t'
+            covariance_string = covariance_string.rstrip('\t')
+            covariance_string = covariance_string + '\n'
+
+        covariance_string = covariance_string.rstrip('\n')       
+        
+       
+        #Adds the values to coefficients of variation
+        for i in coefficient_of_variation:
+            coefficient_string = coefficient_string + str(i) + '\t'
+        coefficient_string = coefficient_string.rstrip('\t')
+        
+
+        
+        #Adds the values to the bias
+        for i in bias:
+            bias_string = bias_string + str(i) + '\t'
+        bias_string = bias_string.rstrip('\t')
+        
+   
+        
+        #Writes mean, covariance, and coefficients of variation to their respective files and also to a single file results.txt
+        out_file_coefficient = open(os.path.join(dir, '', 'coefficients_of_variation.txt'),'w')
+        out_file_covariance= open(os.path.join(dir, '', 'covariance.txt'),'w')
+        out_file_mean = open(os.path.join(dir, '', 'mean.txt'),'w')
+        out_file_bias = open(os.path.join(dir, '', 'bias.txt'),'w')
+        out_file_results = open(os.path.join(dir, '', 'results.txt'), 'w')
+        out_file_mean.write(mean_string)        
+        out_file_coefficient.write(coefficient_string)
+        out_file_covariance.write(covariance_string)
+        out_file_bias.write(bias_string)
+        out_file_results.write('Mean' + '\n' + mean_string + '\n' + '\n' + '\n' + 'Coefficients' + '\n' + coefficient_string + '\n' + '\n' + '\n' + 'Biases' + '\n' + bias_string + '\n' + '\n' + '\n' + 'Covariances' + '\n' + covariance_string)
+        out_file_mean.close()
+        out_file_coefficient.close()
+        out_file_covariance.close()
+        out_file_bias.close()
+        out_file_results.close()
+              
+
+        
+    def get_sp_mean(self):
+        """Read the mean values from mean.txt"""
+        best_values = open(os.path.join(self.path, 'mean.txt'),'r').readlines()
+        
+        headers = best_values[0].rstrip('\n').rstrip('\t').split('\t')
+        values = best_values[1].rstrip('\n').rstrip('\t').split('\t')
+#        print values
+        
+        output = []
+        
+        for i in range(len(headers)):
+            output.append((headers[i], values[i]))
+
+
+        return output
     

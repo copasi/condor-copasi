@@ -11,6 +11,7 @@ class Job(models.Model):
         ('OR', 'Optimization Repeat'),
         ('PR', 'Parameter Estimation Repeat'),
         ('OD', 'Optimization Repeat with Different Algorithms'),
+		('SP', 'Sigma Point Method'),
         ('RW', 'Raw mode'),
     )
     #The type of job, e.g. sensitivity optimization
@@ -135,7 +136,6 @@ class CondorJob(models.Model):
     queue_id = models.IntegerField(null=True, unique=True)
     #The amount of computation time in seconds that the condor job took to finish. Note, this does not include any interrupted runs. Will not be set until the condor job finishes.
     run_time = models.FloatField(null=True)
-
     
     def __unicode__(self):
         return unicode(self.queue_id)
