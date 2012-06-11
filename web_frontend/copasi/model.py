@@ -1483,7 +1483,7 @@ class CopasiModel:
             if line != '\n':
                 if output_re.match(line):
                     value = float(output_re.match(line).groupdict()['best_value'])
-                	if best_value != None and maximize:
+                    if best_value != None and maximize:
                         if value > best_value:
                             best_value = value
                             best_line = line
