@@ -117,181 +117,7 @@ def add_noise(dir, list, alpha, beta, kappa, measurement_error):
         for line in data_list.read().split():
             shutil.copy2(os.path.join(dir, line), os.path.join(dir, str(m+datapoints)))
     data_list.close()
-        
-
-        
-class UploadModelForm(forms.Form):
-
-    def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop('request', None)
-        super(UploadModelForm, self).__init__(*args, **kwargs)
-        
-    model_file = forms.FileField()
-    job_name = forms.RegexField(max_length=64, regex=re.compile(r'^(a-z|A-Z|0-9)*[^%]*$'), label='Job Name', help_text='For your reference, enter a name for this job', widget=forms.TextInput(attrs={'size':'40'}))
-    
-    #Checkbox to give the user the option to skip the load balancing step
-    skip_load_balancing = forms.BooleanField(label='Skip load balancing step', help_text='Select this to skip the automatic load balancing step, and make the run time of each parallel job as short as possible. <b>Use with caution! This has the potential to overload the Condor system with huge numbers of parallel jobs.</b> Not applicable for some job types - see documentation for further details.', required=False)
-    
-    def clean_job_name(self):
-        job_name = self.cleaned_data['job_name']
-        user = self.request.user
-        try:
-            jobs = models.Job.objects.filter(user=user, name=job_name, submitted=True)
-            assert len(jobs)==0            
-            return self.cleaned_data['job_name']
-        except AssertionError:
-            raise forms.ValidationError('A job with this name already exists.')
-
-class StochasticUploadModelForm(UploadModelForm):
-    runs = forms.IntegerField(label='Repeats', help_text='The number of repeats to perform')        
-    
-    def clean_runs(self):
-        runs = self.cleaned_data['runs']
-        try:
-            assert runs > 0
-            return runs
-        except AssertionError:
-            raise forms.ValidationError('There must be at least one run')
-
-			
-class SigmaPointMethodUploadModelForm(UploadModelForm):
-    sigma_point_method_data = forms.FileField(help_text='Select either a single time course data file, or if more than one data file is required, upload a .zip file containing multiple data files')
-    alpha = forms.IntegerField(label='Scaling factor alpha', help_text='Default value 1.  If alpha is 1, kappa must be 0', required=True)
-    beta = forms.IntegerField(label='Scaling factor beta', help_text='Default value 0.', required=True)
-    kappa = forms.IntegerField(label='Scaling factor kappa', help_text='Default value 0.', required=True)
-    measurement_error = forms.DecimalField(decimal_places=10, max_digits=10, help_text='Noise added to the data will be assumed to normally distributed within the measurement error with 95% confidence.', required=True)
-
-#Form for the parameter estimation task. Adds one more file field
-class ParameterEstimationUploadModelForm(StochasticUploadModelForm):
-    parameter_estimation_data = forms.FileField(help_text='Select either a single data file, or if more than one data file is required, upload a .zip file containing multiple data files')
-    custom_report = forms.BooleanField(label='Use a custom report', help_text='Select this to use a custom report instead of the automatically generated one. If you select this, Condor-COPASI may not be able to process the output data, and the job will fail. However, you will still be able download the unprocessed results for manual processing. For output processing to work, you must create a report with custom fields added before the fields that would otherwise be automatically generated (Best Parameters, Best Value, CPU Time and Function Evaluations).', required=False)
-
-#Forms for the optimization repeat w/different algorithms task
-class CurrentSolutionStatisticsForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
-    
-    
-class GeneticAlgorithmForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('genetic_algorithm', this);",}))
-    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
-    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    
-class GeneticAlgorithmSRForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('genetic_algorithm_sr', this);",}))
-    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
-    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
-    
-class HookeAndJeevesForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('hooke_and_jeeves', this);",}))
-    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=50, min_value=1)
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
-    rho = forms.FloatField(label='Rho', initial=0.2, min_value=0, max_value=1)
-    
-class LevenbergMarquardtForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('levenberg_marquardt', this);",}))
-    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
-    
-class EvolutionaryProgrammingForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('evolutionary_programming', this);",}))
-    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
-    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    
-class RandomSearchForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('random_search', this);",}))
-    no_of_iterations = forms.IntegerField(label='Number of Iterations', initial=100000, min_value=1)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    
-class NelderMeadForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('nelder_mead', this);",}))
-    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=200, min_value=1)
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
-    scale = forms.FloatField(label='Scale', initial=10, min_value=0)
-    
-class ParticleSwarmForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('particle_swarm', this);",}))
-    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=2000, min_value=1)
-    swarm_size = forms.IntegerField(label='Swarm Size', initial=50, min_value=1)
-    std_deviation = forms.FloatField(label='Std. Deviation', initial=1e-6, min_value=0)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    
-class PraxisForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('praxis', this);",}))
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-5, min_value=0)
-    
-class TruncatedNewtonForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False)
-    
-    
-class SimulatedAnnealingForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('simulated_annealing', this);",}))
-    start_temperature = forms.FloatField(label='Start Temperature', initial=1, min_value=0)
-    cooling_factor = forms.FloatField(label='Cooling Factor', initial=0.85, min_value=0)
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    
-    
-class EvolutionStrategyForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('evolution_strategy', this);",}))
-    no_of_generations = forms.IntegerField(label='Number of Generations', initial=200, min_value=1)
-    population_size = forms.IntegerField(label='Population Size', initial=20, min_value=1)
-    random_number_generator = forms.IntegerField(label='Random Number Generator', initial=1, min_value=0)
-    seed=forms.IntegerField(label='Seed', initial=0, min_value=0)
-    pf = forms.FloatField(label='Pf', initial=0.475, min_value=0, max_value=1)    
-    
-class SteepestDescentForm(forms.Form):
-    enabled = forms.BooleanField(label='Enabled', required=False, widget=forms.CheckboxInput(attrs={'onclick':"toggle('steepest_descent', this);",}))
-    iteration_limit = forms.IntegerField(label='Iteration Limit', initial=100, min_value=1)
-    tolerance = forms.FloatField(label='Tolerance', initial=1e-6, min_value=0)
-    
-    
-#form to update the stochastic simulation plots
-class PlotUpdateForm(forms.Form):
-    """Form containing controls to update plots"""
-    
-    def __init__(self, *args, **kwargs):
-        variables = kwargs.pop('variable_choices', None)
-        variable_choices = []
-        for i in range(len(variables)):
-            variable_choices.append((i, variables[i]))
-
-        super(PlotUpdateForm, self).__init__(*args, **kwargs)
-        self.fields['variables'].choices = variable_choices
-        
-    legend = forms.BooleanField(label='Show figure legend', required=False, initial=True)
-    stdev = forms.BooleanField(label='Show standard deviations', required=False, initial=True)
-    grid = forms.BooleanField(label='Show grid', required=False, initial=True)
-    logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
-    variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
-
-#form to update the SO progress plots
-class SOPlotUpdateForm(forms.Form):
-    """Form containing controls to update plots"""
-    
-    def __init__(self, *args, **kwargs):
-        variables = kwargs.pop('variable_choices', None)
-        variable_choices = []
-        for i in range(len(variables)):
-            variable_choices.append((i, variables[i]))
-
-        super(SOPlotUpdateForm, self).__init__(*args, **kwargs)
-        self.fields['variables'].choices = variable_choices
-        
-    legend = forms.BooleanField(label='Show figure legend', required=False, initial=False)
-    grid = forms.BooleanField(label='Show grid', required=False, initial=True)
-    logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
-    variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
-    
+		
 @login_required
 def change_password(request):
     """Displays a form to allow the user to change their password."""
@@ -1000,12 +826,14 @@ def jobOutput(request, job_name):
             stdev = form.cleaned_data['stdev']
             legend = form.cleaned_data['legend']
             grid = form.cleaned_data['grid']
+            fontsize = form.cleaned_data['fontsize']
         else:
             variables=range(len(variable_choices))
             log=False
             stdev = True
             legend=True
             grid=True
+            fontsize='12'
             
         #construct the string to load the image file
         img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
@@ -1017,6 +845,8 @@ def jobOutput(request, job_name):
             img_string += '&legend=true'
         if grid:
             img_string += '&grid=true'
+        if fontsize:
+            img_string += '&fontsize=' + str(fontsize)
     
     elif job.job_type == 'OR':
         try:
@@ -1150,20 +980,21 @@ def ss_plot(request, job_name):
         stdev=request.GET.get('stdev', 'false')
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
+        fontsize = int(request.GET.get('fontsize', '12'))
         
-        #Check to see if we should return as an attachment in .png or .svg or .eps
+        #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
         download_svg = 'download_svg' in request.POST
-        download_eps = 'download_eps' in request.POST
+        download_pdf = 'download_pdf' in request.POST
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < ((len(results)-1)/2)
         except:
             variables = range((len(results) - 1)/2)
         
-        matplotlib.rc('font', size=8)
+        matplotlib.rc('font', size=fontsize)
         fig = plt.figure()
-        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
+        #plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
         plt.xlabel('Time')
         
         color_list = ['red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black']
@@ -1193,7 +1024,7 @@ def ss_plot(request, job_name):
         if log != 'false':
             plt.yscale('log')
         if legend != 'false':
-            plt.legend(loc=0, )
+            plt.legend(loc=0, prop={'size':fontsize} )
         if grid != 'false':
             plt.grid(True)
             
@@ -1205,10 +1036,10 @@ def ss_plot(request, job_name):
             response = HttpResponse(mimetype='image/svg', content_type='image/svg')
             fig.savefig(response, format='svg', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
-        elif download_eps:
-            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
-            fig.savefig(response, format='eps', transparent=False, dpi=120)
-            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        elif download_pdf:
+            response = HttpResponse(mimetype='application/pdf', content_type='application/pdf')
+            fig.savefig(response, format='pdf', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.pdf'
         else:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
             fig.savefig(response, format='png', transparent=False, dpi=120)
@@ -1248,11 +1079,12 @@ def so_progress_plot(request, job_name):
 
         legend = request.GET.get('legend', 'false')
         grid = request.GET.get('grid', 'false')
+        fontsize = int(request.GET.get('fontsize', '12'))
         
-        #Check to see if we should return as an attachment in .png or .svg or .eps
+        #Check to see if we should return as an attachment in .png or .svg or .pdf
         download_png = 'download_png' in request.POST
         download_svg = 'download_svg' in request.POST
-        download_eps = 'download_eps' in request.POST
+        download_pdf = 'download_pdf' in request.POST
         try:
             variables = map(int, get_variables.split(','))
             assert max(variables) < len(variable_choices)
@@ -1260,7 +1092,7 @@ def so_progress_plot(request, job_name):
             raise
             variables = range(len(variable_choices))
         
-        matplotlib.rc('font', size=8)
+        matplotlib.rc('font', size=fontsize)
         fig = plt.figure()
 #        plt.title(job.name + ' (' + str(job.runs) + ' repeats)', fontsize=12, fontweight='bold')
         plt.xlabel('Iterations')
@@ -1305,7 +1137,7 @@ def so_progress_plot(request, job_name):
         if log != 'false':
             plt.yscale('log')
         if legend != 'false':
-            plt.legend(loc=0, )
+            plt.legend(loc=0, prop={'size':fontsize} )
         if grid != 'false':
             plt.grid(True)
             
@@ -1321,10 +1153,10 @@ def so_progress_plot(request, job_name):
             response = HttpResponse(mimetype='image/svg', content_type='image/svg')
             fig.savefig(response, format='svg', transparent=False, dpi=120)
             response['Content-Disposition'] = 'attachment; filename=' + job.name + '.svg'
-        elif download_eps:
-            response = HttpResponse(mimetype='image/eps', content_type='image/eps')
-            fig.savefig(response, format='eps', transparent=False, dpi=120)
-            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.eps'
+        elif download_pdf:
+            response = HttpResponse(mimetype='application/pdf', content_type='application/pdf')
+            fig.savefig(response, format='pdf', transparent=False, dpi=120)
+            response['Content-Disposition'] = 'attachment; filename=' + job.name + '.pdf'
         else:    
             response = HttpResponse(mimetype='image/png', content_type='image/png')
             fig.savefig(response, format='png', transparent=False, dpi=120)
@@ -1377,11 +1209,13 @@ def so_progress_page(request, job_name):
         log = form.cleaned_data['logarithmic']
         legend = form.cleaned_data['legend']
         grid = form.cleaned_data['grid']
+        fontsize = form.cleaned_data['fontsize']
     else:
         variables=range(len(variable_choices))
         log=False
         legend=False
         grid=True
+        fontsize = '12'
         
     #construct the string to load the image file
     img_string = '?variables=' + str(variables).strip('[').rstrip(']').replace(' ', '')
@@ -1391,6 +1225,8 @@ def so_progress_page(request, job_name):
         img_string += '&legend=true'
     if grid:
         img_string += '&grid=true'
+    if fontsize:
+        img_string += '&fontsize=' + str(fontsize)
     
     pageTitle = 'Optimization Progress: ' + str(job.name)
     return render_to_response('my_account/so_progress_plot.html', locals(), RequestContext(request))

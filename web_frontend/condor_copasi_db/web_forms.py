@@ -90,6 +90,12 @@ class RawUploadModelForm(UploadModelForm):
     
     raw_mode_args = forms.RegexField(max_length=128, regex=re.compile(r'.*\$filename.*$'), label='Optional arguments', help_text='Optional arguments to add when running COPASI. Must contain <b>$filename</b> as an argument', widget=forms.TextInput(attrs={'size':'40'}), required=True, initial='--nologo --home . --save $filename $filename') #TODO: update this regex so that it won't match certain characters, e.g. ';','|', '&' etc (though perhaps this isn't necessary)
 
+class SigmaPointMethodUploadModelForm(UploadModelForm):
+    sigma_point_method_data = forms.FileField(help_text='Select either a single time course data file, or if more than one data file is required, upload a .zip file containing multiple data files')
+    alpha = forms.IntegerField(label='Scaling factor alpha', help_text='Default value 1.  If alpha is 1, kappa must be 0', required=True)
+    beta = forms.IntegerField(label='Scaling factor beta', help_text='Default value 0.', required=True)
+    kappa = forms.IntegerField(label='Scaling factor kappa', help_text='Default value 0.', required=True)
+    measurement_error = forms.DecimalField(decimal_places=10, max_digits=10, help_text='Noise added to the data will be assumed to normally distributed within the measurement error with 95% confidence.', required=True)
 
 
 class ODUploadModelForm(UploadModelForm):
@@ -208,7 +214,7 @@ class PlotUpdateForm(forms.Form):
     grid = forms.BooleanField(label='Show grid', required=False, initial=True)
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
-
+    fontsize = forms.IntegerField(label='Font size', required=False, initial='12')
 #form to update the SO progress plots
 class SOPlotUpdateForm(forms.Form):
     """Form containing controls to update plots"""
@@ -226,6 +232,7 @@ class SOPlotUpdateForm(forms.Form):
     grid = forms.BooleanField(label='Show grid', required=False, initial=True)
     logarithmic = forms.BooleanField(label='Logarithmic scale', required=False)
     variables = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple(), required=True)
+    fontsize = forms.IntegerField(label='Font size', required=False, initial='12')
     
 class ChangePasswordForm(forms.Form):
     """Form for allowing a user to change their password. Checks that the old password is valid, and the new passwords match"""
