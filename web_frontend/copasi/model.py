@@ -1487,11 +1487,11 @@ class CopasiModel:
                         if value > best_value:
                             best_value = value
                             best_line = line
-                	elif best_value != None and not maximize:
+                    elif best_value != None and not maximize:
                         if value < best_value:
                             best_value = value
                             best_line = line
-                	elif best_value == None:
+                    elif best_value == None:
                         best_value = value
                         best_line = line
             else:
