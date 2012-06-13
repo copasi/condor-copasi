@@ -22,7 +22,7 @@ class MyDaemon(Daemon):
                 time.sleep(min_repeat_time - difference)
  
 if __name__ == "__main__":
-    daemon = MyDaemon('/tmp/helper_daemon.pid')
+    daemon = MyDaemon('/tmp/Condor-COPASI.pid')
     if len(sys.argv) == 2:
         if 'start' == sys.argv[1]:
             daemon.start()

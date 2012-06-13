@@ -13,7 +13,7 @@ Requirements = ( (OpSys == "WINNT61" && Arch == "INTEL" ) || (OpSys == "WINNT61"
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 queue\n"""
-	
+
 def get_time_per_job(job):
     #For benchmarking purposes, jobs with a name ending with ?t=0.5 will use the custom t for load balancing
     name_re = re.compile(r'.*t=(?P<t>.*)')
@@ -1785,7 +1785,7 @@ class CopasiModel:
         for line in open(os.path.join(self.path, '0_out.txt'), 'r'):
             output_file.write(line)
             try:
-                if line != '\n':q
+                if line != '\n':
                     if output_re.match(line):
                         current_value = float(output_re.match(line).groupdict()['best_value'])
                         if best_value != None:

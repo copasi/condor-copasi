@@ -357,9 +357,9 @@ def newTask(request, type):
                                             
                     elif type=='SP':
                         name = form.cleaned_data['job_name']
-                        runs = int(form.cleaned_data['runs'])
-                        skip_load_balancing = form.cleaned_data['skip_load_balancing']
-                        skip_model_generation = form.cleaned_data['skip_model_generation']
+                        runs = None
+                        skip_load_balancing = None
+                        skip_model_generation = None
                         custom_report = None
                         raw_mode_args = None
                         rank = form.cleaned_data['rank']
