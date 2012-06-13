@@ -46,7 +46,7 @@ def tasks(request):
 def number_of_data_points(dir, list):
     number=0
     with open(os.path.join(dir, list)) as data_list:
-        for line in data_list.read().split():
+        for line in data_list.read().split('\n'):
              with open(os.path.join(dir, line)) as data_file:
                 data = data_file.read()
                 data_file.close()
