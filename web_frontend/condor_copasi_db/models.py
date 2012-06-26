@@ -143,3 +143,6 @@ class CondorJob(models.Model):
     def delete(self, *args, **kwargs):
         """Override the build-in delete."""
         super(CondorJob, self).delete(*args, **kwargs)
+        
+    def getDirectory(self):
+        return os.path.dirname(self.spec_file)
