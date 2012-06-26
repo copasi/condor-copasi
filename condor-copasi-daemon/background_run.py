@@ -218,7 +218,7 @@ def run():
         job = condor_job.parent
         logging.debug('Checking unknown job ' + str(condor_job.queue_id))
         try:
-            filename=os.path.join(job.get_path(), condor_job.log_file)
+            filename=os.path.join(condor_job.getDirectory(), condor_job.log_file)
             log = condor_log.Log(filename)
             if log.has_terminated:
                 if log.termination_status == 0:
@@ -282,7 +282,7 @@ def run():
                 total_run_time = 0.0
                 for condor_job in condor_jobs:
                     try:
-                        filename=os.path.join(job.get_path(), condor_job.log_file)
+                        filename=os.path.join(condor_job.getDirectory(), condor_job.log_file)
                         log = condor_log.Log(filename)
                         assert log.termination_status == 0
                         #While we're here, update the CondorJob run time
@@ -567,7 +567,7 @@ def run():
     for condor_job in condor_jobs:
         try:
             job = condor_job.parent
-            filename=os.path.join(job.get_path(), condor_job.log_file)
+            filename=os.path.join(condor_job.getDirectory(), condor_job.log_file)
             log = condor_log.Log(filename)
             condor_job.run_time = log.running_time_in_days
             condor_job.save()
