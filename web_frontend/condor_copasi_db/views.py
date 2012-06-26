@@ -47,14 +47,15 @@ def number_of_data_points(dir, list):
     number=0
     with open(os.path.join(dir, list)) as data_list:
         for line in data_list.read().split('\n'):
-             with open(os.path.join(dir, line)) as data_file:
-                data = data_file.read()
-                data_file.close()
-                array = data.split('\n')
-                for i in array[1:]:
-                #Skips the header in each data file
-                    for j in i.split('\t')[1:]:
-                    #Skips the "time" value in each line of each data file
+            if not line == '':
+                with open(os.path.join(dir, line)) as data_file:
+                    data = data_file.read()
+                    data_file.close()
+                    array = data.split('\n')
+                    for i in array[1:]:
+                    #Skips the header in each data file
+                        for j in i.split('\t')[1:]:
+                        #Skips the "time" value in each line of each data file
                             number=number+1               
     data_list.close()
     return number
@@ -117,6 +118,8 @@ def add_noise(dir, list, alpha, beta, kappa, measurement_error):
         for line in data_list.read().split():
             shutil.copy2(os.path.join(dir, line), os.path.join(dir, str(m+datapoints)))
     data_list.close()
+    
+    return datapoints
 		
 @login_required
 def change_password(request):
@@ -453,12 +456,12 @@ def newTask(request, type):
                         beta = float(form.cleaned_data['beta'])
                         kappa = float(form.cleaned_data['kappa'])
                         measurement_error = float(form.cleaned_data['measurement_error'])                            
-                        add_noise(job_dir, 'data_files_list.txt', alpha, beta, kappa, measurement_error)
-                        runs = 2*number_of_data_points(job_dir, 'data_files_list.txt')
+                        runs = 2 * add_noise(job_dir, 'data_files_list.txt', alpha, beta, kappa, measurement_error)
                         if int(form.cleaned_data['kappa']) > 0:
                             runs = runs+1
                         job.runs = runs
-                                               
+                        job.save()
+                                              
                     #Otherwise, if this is a raw job, create an empty file called data_files_list.txt
                     
                     elif type=='RW' and not isinstance(form.cleaned_data['parameter_estimation_data'], TemporaryUploadedFile):
