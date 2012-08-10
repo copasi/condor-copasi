@@ -1,5 +1,7 @@
 from django.shortcuts import render_to_response, redirect
 import datetime, os, shutil, re, math
+import logging
+
 from django import forms
 from django.db import IntegrityError
 from django.contrib.auth.models import User
@@ -43,28 +45,59 @@ def tasks(request):
     return render_to_response('tasks/tasks.html', locals(), RequestContext(request))
 
     #Returns the number of data points in all data files available for an uploaded task.
-def number_of_data_points(dir, list):
+def number_of_data_points(dir, list, copyColumns):
+    # logging.basicConfig(filename=settings.LOG_FILE,
+    #                     level=settings.LOG_LEVEL,
+    #                     format='%(asctime)s::%(levelname)s::%(message)s',
+    #                     datefmt='%Y-%m-%d, %H:%M:%S')
+
     number=0
     with open(os.path.join(dir, list)) as data_list:
-        for line in data_list.read().split('\n'):
-            if not line == '':
-                with open(os.path.join(dir, line)) as data_file:
+        for fileName in data_list.read().split('\n'):
+            if not fileName == '':
+                with open(os.path.join(dir, fileName)) as data_file:
                     data = data_file.read()
                     data_file.close()
-                    array = data.split('\n')
-                    for i in array[1:]:
-                    #Skips the header in each data file
-                        for j in i.split('\t')[1:]:
-                        #Skips the "time" value in each line of each data file
-                            number=number+1               
+                    dataLine = data.split('\n')
+
+                    # Analyze the header to find the time column.
+                    # The time column and all columns before it are copied, i.e., are treated as dependent data.
+                    copy = 1
+                    for header in dataLine[0].split('\t'):
+                        if (header == 'time'):
+                            break;
+                        copy += 1 
+                        
+                    copyColumns.append(copy);
+                    
+                    # Process the data in the following lines.
+                    for line in dataLine[1:]:
+                        # Skip the copied columns in each row
+                        for value in line.split('\t')[copy:]:
+                            # Skip non numeric entries.
+                            try:
+                                float(value)
+                                number = number + 1
+                                
+                            except ValueError:
+                                # We do nothing
+                                continue
+                            
     data_list.close()
     return number
 
     #Method for sigma point -- generates additional data files from the initial set by adding noise.
 def add_noise(dir, list, alpha, beta, kappa, measurement_error):
+    # logging.basicConfig(filename=settings.LOG_FILE,
+    #                     level=settings.LOG_LEVEL,
+    #                     format='%(asctime)s::%(levelname)s::%(message)s',
+    #                     datefmt='%Y-%m-%d, %H:%M:%S')
+
     import random
     form = SigmaPointMethodUploadModelForm
-    datapoints = number_of_data_points(dir, list)
+    copyColumns = []
+    
+    datapoints = number_of_data_points(dir, list, copyColumns)
     
     scalingfactors = open(os.path.join(dir, 'ScalingFactors.txt'), 'w')
     scalingfactors.write(str(alpha)+'\n'+str(beta)+'\n'+str(kappa)+'\n'+str(measurement_error)+'\n'+str(datapoints))
@@ -76,6 +109,8 @@ def add_noise(dir, list, alpha, beta, kappa, measurement_error):
     m = 0
     for z in range(datapoints):
         with open(os.path.join(dir, list)) as data_list:
+            fileIndex = 0
+            
             for line in data_list.read().split():
                 with open(os.path.join(dir, line)) as data_file:
                     data = data_file.read()
@@ -94,24 +129,38 @@ def add_noise(dir, list, alpha, beta, kappa, measurement_error):
                     out_file2 = open(os.path.join(dir, str(m+datapoints), line),'w')
                     out_file2.write(array[0]+'\n')
 
-                    for i in array[1:]:
-                    #Inserts time points
-                        out_file1.write(i.split('\t')[0]+'\t')
-                        out_file2.write(i.split('\t')[0]+'\t')
-                        for j in i.split('\t')[1:]:
-                            value = float(j)
-                            noise = lambdterm*abs(random.gauss(0, 1/1.96)*measurement_error)*value
-                            #Ensures that the generated data is not negative
-                            while (value - noise) < 0:
-                                noise = lambdterm*abs(random.gauss(0, 1/1.96)*measurement_error)*value
-                            out_file1.write(str(value+noise)+'\t')
-                            out_file2.write(str(max(0,value-noise))+'\t')
+                    for values in array[1:]:
+                        # Copy independent data
+                        for value in values.split('\t')[0:copyColumns[fileIndex]]:
+                            out_file1.write(value + '\t')
+                            out_file2.write(value + '\t')
+                            
+                        for value in values.split('\t')[copyColumns[fileIndex]:]:
+                            try:
+                                x = float(value)
+                                noise = lambdterm * abs(random.gauss(0, 1/1.96) * measurement_error) * x
+                                
+                                # Ensures that the generated data is not negative
+                                while (x - noise) < 0:
+                                    noise = lambdterm * abs(random.gauss(0, 1/1.96) * measurement_error) * x
+                                    
+                                out_file1.write(str(x + noise) + '\t')
+                                out_file2.write(str(x - noise) + '\t')
+                                
+                            except ValueError:
+                                out_file1.write(value + '\t')
+                                out_file2.write(value + '\t')
+                            
                         out_file1.write('\n')
                         out_file2.write('\n')                         
+                        
                     out_file1.close()
                     out_file2.close()
+                    
+                fileIndex += 1
             m=m+1
         data_list.close()
+        
     #Generates the folder for the parameter estimation task on the initial data.
     os.makedirs(os.path.join(dir, str(m+datapoints)))
     with open(os.path.join(dir, list)) as data_list:
@@ -120,7 +169,7 @@ def add_noise(dir, list, alpha, beta, kappa, measurement_error):
     data_list.close()
     
     return datapoints
-		
+        
 @login_required
 def change_password(request):
     """Displays a form to allow the user to change their password."""
