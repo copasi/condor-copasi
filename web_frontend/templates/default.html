@@ -7,7 +7,7 @@
 <title>
 Condor-COPASI Web Frontend - {% block title %} {{ pageTitle }} {% endblock %}
 </title>
-<link rel="stylesheet" type="text/css" href="http://{{ host }}/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css"> 
+<link rel="stylesheet" type="text/css" href="/{% if subfolder %}{{subfolder}}/{% endif %}{{static_url}}/style.css"> 
 {%block head%}
 {% endblock %}
 </head>
