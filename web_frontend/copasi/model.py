@@ -2858,22 +2858,14 @@ class CopasiModel:
         output_string = r'.*\(\s(?P<params>.+)\s\)\s+(?P<best_value>\S+)\s+(?P<cpu_time>\S+)\s+(?P<function_evals>\S+)\.*'
         output_re = re.compile(output_string)
         
-        best_value = None
-        best_line = None
-        
         #Copy the contents of the first file to results.txt
         for j in range(jobs):
             for line in open(os.path.join(self.path, str(j), str(j)+'_out.txt'), 'r'):  
                 try:
                     if line == '\n':
                         last_value = output_re.match(last_line).groupdict()['best_value']
-                        if best_value != None:
-                            if last_value < best_value:
-                                best_value = last_value
-                                best_line = last_line
-                        elif best_value == None:
-                            best_value = last_value
-                            best_line = last_line
+                        best_value = last_value
+                        best_line = last_line
                     else:
                         last_line = line
                 except:
@@ -2882,28 +2874,6 @@ class CopasiModel:
                     else:
                         t=0#raise
                    
-            #And for all other files, copy everything but the last line
-            '''for i in range(jobs)[1:]:
-                firstLine = True
-                for line in open(os.path.join(self.path, str(i), str(i) + '_out.txt'), 'r'):
-                    if not firstLine:
-                        output_file.write(line)
-                        try:
-                            if line == '\n':
-                                last_value = output_re.match(last_line).groupdict()['best_value']
-                                if last_value < best_value:
-                                    best_value = last_value
-                                    best_line = last_line
-                            else:
-                                last_line = last_line
-                        except:
-                            if custom_report:
-                                pass
-                            else:
-                                raise
-                    firstLine = False'''                    
-                    
-            
             #Write the best value to results.txt
             output_file = open(os.path.join(self.path, str(j), str(j)+'_results.txt'), 'w')
             
