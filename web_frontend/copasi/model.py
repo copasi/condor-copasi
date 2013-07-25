@@ -2911,7 +2911,7 @@ class CopasiModel:
             
             for parameter in self.get_parameter_estimation_parameters():
 
-                output_file.write(parameter[0])
+                output_file.write(parameter[0].encode('utf8'))
                 output_file.write('\t')
             output_file.write('\n')
 
