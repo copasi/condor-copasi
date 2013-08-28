@@ -2603,7 +2603,7 @@ class CopasiModel:
 
         for i in range(repeats):
             copasi_file = Template('auto_copasi_$index.cps').substitute(index=i)
-            condor_job_string = Template(raw_mode_string_with_args).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string, OpSys='$$(OpSys)', Arch='$$(Arch)')
+            condor_job_string = Template(raw_mode_string_with_args).substitute(copasiPath=self.binary_dir, copasiFile=copasi_file, otherFiles=files_string, OpSys='$$(OpSys)', Arch='$$(Arch)', rank=rank)
             condor_job_filename = os.path.join(self.path, Template('auto_condor_$index.job').substitute(index=i))
             condor_file = open(condor_job_filename, 'w')
             condor_file.write(condor_job_string)
