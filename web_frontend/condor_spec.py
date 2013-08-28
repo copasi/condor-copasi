@@ -45,7 +45,7 @@ log =  results.log
 error = results.err
 output = results.out
 rank = ${rank}
-Requirements = ( OpSys == "LINUX" || OpSys=="OSX") && ( Arch=="X86_64" || Arch=="INTEL" ) && (HAS_PYTHON26 == True) && (machine != "localhost.localdomain")
+Requirements = ( OpSys == "LINUX" || OpSys=="OSX") && ( Arch=="X86_64" || Arch=="INTEL" ) && (machine != "localhost.localdomain")
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 queue\n"""
