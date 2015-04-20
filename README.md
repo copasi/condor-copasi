@@ -11,7 +11,7 @@ Condor-COPASI is written in Python 2.6 as a [Django 1.2][] application.
 It is free, open source software, and distributed under the terms of the
 [Artistic License 2.0][]
 
-Condor-COPASI was developed at the [University of Manchester][].
+Condor-COPASI was developed at the [University of Manchester][] in [Pedro Mendes' group](http://www.comp-sys-bio.org).
 
 Instruction Manual
 ==================
