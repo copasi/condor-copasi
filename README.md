@@ -11,7 +11,7 @@ Condor-COPASI is written in Python 2.6 as a [Django 1.2][] application.
 It is free, open source software, and distributed under the terms of the
 [Artistic License 2.0][]
 
-Condor-COPASI was developed at the [University of Manchester][] in [Pedro Mendes' group](http://www.comp-sys-bio.org).
+Condor-COPASI was developed at the [University of Manchester][] in [Pedro Mendes' group][].
 
 Instruction Manual
 ==================
@@ -83,4 +83,5 @@ determine which algorithm(s) found the best result.
   [Django 1.2]: http://docs.djangoproject.com/en/dev/releases/1.2/
   [Artistic License 2.0]: http://www.perlfoundation.org/artistic_license_2_0
   [University of Manchester]: http://www.manchester.ac.uk
+  [Pedro Mendes' group]: http://www.comp-sys-bio.org
   [A new strategy for assessing sensitivities in biochemical models]: http://www.ncbi.nlm.nih.gov/pubmed/18632455
